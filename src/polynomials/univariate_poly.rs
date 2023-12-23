@@ -90,7 +90,7 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
     }
 }
 
-// Implement native multiplication for polynomial
+// Implement native multiplication for univariate polynomial
 impl<F: PrimeField> Mul for UnivariatePolynomial<F> {
     type Output = Self;
 
@@ -160,7 +160,7 @@ impl<F: PrimeField> TryFrom<MultilinearPolynomial<F>> for UnivariatePolynomial<F
     }
 }
 
-// Implement native addition for polynomial
+// Implement native addition for univariate polynomial
 impl<F: PrimeField> Add for UnivariatePolynomial<F> {
     type Output = Self;
 
@@ -198,7 +198,9 @@ impl<F: PrimeField> Add for UnivariatePolynomial<F> {
 mod tests {
     use std::vec;
 
-    use crate::polynomials::multilinear_poly::{MultilinearMonomial, MultilinearPolynomial};
+    use crate::polynomials::multilinear_poly::{
+        MultilinearMonomial, MultilinearPolynomial,
+    };
 
     use super::UnivariatePolynomial;
     use ark_ff::{Fp64, MontBackend, MontConfig};

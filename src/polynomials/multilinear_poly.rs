@@ -1,6 +1,9 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    ops::{Add, Mul},
+};
 
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use serde::{Deserialize, Serialize};
 
 // Multilinear Monomial representation where
@@ -98,7 +101,7 @@ impl<F: PrimeField> MultilinearMonomial<F> {
 impl<F: PrimeField> MultilinearPolynomial<F> {
     // Creates new multilinear polynomial
     pub fn new(terms: Vec<MultilinearMonomial<F>>) -> Self {
-        MultilinearPolynomial { terms }
+        Self { terms }
     }
 
     // Removes empty terms from a multilinear polynomial
@@ -160,30 +163,6 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
         res
     }
 
-    // Add two multilinear polynomials
-    pub fn add(&self, rhs: MultilinearPolynomial<F>) -> MultilinearPolynomial<F> {
-        let mut res = self.clone();
-        res.terms.extend(rhs.terms);
-        res.simplify()
-    }
-
-    // Partially evaluate a multilinear polynomial
-    // tuple comprise of variable index which is equivalent to the variable
-    // and Field element which is the point to evaluate at
-    pub fn partial_eval(mut self, x: Vec<(usize, F)>) -> MultilinearPolynomial<F> {
-        for i in 0..self.terms.len() {
-            for j in 0..x.len() {
-                let (var, val) = x[j];
-                assert!(var <= self.terms[0].vars.len(), "Variable not found");
-                if self.terms[i].vars[var] {
-                    self.terms[i].coefficient *= val;
-                    self.terms[i].vars[var] = false;
-                };
-            }
-        }
-        self.simplify()
-    }
-
     // Multiply a multilinear polynomial by a scalar value
     pub fn scalar_mul(&mut self, scalar: F) {
         for i in 0..self.terms.len() {
@@ -191,47 +170,9 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
         }
     }
 
-    // Multiply two multilinear polynomials
-    pub fn multiply(mut self, rhs: &mut MultilinearPolynomial<F>) -> MultilinearPolynomial<F> {
-        let mut res = MultilinearPolynomial::new(vec![]);
-        for i in 0..self.terms.len() {
-            for j in 0..rhs.terms.len() {
-                res.terms
-                    .push(self.terms[i].multiply(&mut rhs.terms[j].clone()));
-            }
-        }
-        res.simplify()
-    }
-
     // Returns true of polynomial is a zero polynomial
     pub fn is_zero(&self) -> bool {
         self.terms.len() == 0
-    }
-
-    // Fully evaluates a multilinear polynomial
-    pub fn evaluate(&self, x: Vec<(usize, F)>) -> F {
-        let mut res = self.clone();
-        if res.is_zero() {
-            return F::zero();
-        }
-
-        assert!(
-            self.terms[0].vars.len() == x.len(),
-            "Must evaluate at all points"
-        );
-
-        for i in 0..res.terms.len() {
-            for j in 0..x.len() {
-                let (var, val) = x[j];
-                assert!(var <= self.terms[0].vars.len(), "Variable not found");
-                if res.terms[i].vars[var] {
-                    res.terms[i].coefficient *= val;
-                    res.terms[i].vars[var] = false;
-                };
-            }
-        }
-        assert!(res.simplify().terms.len() == 1, "All variables should be evaluated");
-        res.simplify().terms[0].coefficient
     }
 
     // Evaluates the sum over the boolean hypercube and returns the sum
@@ -242,13 +183,11 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
         };
         let vars_len = self.terms[0].vars.len();
         for i in 0..2_usize.pow(vars_len as u32) {
-            let boolean_vec: Vec<F> = get_binary_string(i, vars_len).chars().into_iter().map(|var| {
-                if var == '0' {
-                    F::zero()
-                } else {
-                    F::one()
-                }
-            }).collect();
+            let boolean_vec: Vec<F> = get_binary_string(i, vars_len)
+                .chars()
+                .into_iter()
+                .map(|var| if var == '0' { F::zero() } else { F::one() })
+                .collect();
             let eval_domain = boolean_vec.into_iter().enumerate().collect();
             res += self.evaluate(eval_domain);
         }
@@ -266,12 +205,12 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
             for j in 0..boolean_hypercube.len() {
                 let i_char = boolean_hypercube.chars().nth(j).unwrap();
                 if i_char == '0' {
-                    let mut i_rep = check_bit(0);
-                    y_multi_lin_poly = y_multi_lin_poly.multiply(&mut i_rep);
+                    let i_rep = check_bit(0);
+                    y_multi_lin_poly = y_multi_lin_poly * i_rep;
                 };
                 if i_char == '1' {
-                    let mut i_rep = check_bit(1);
-                    y_multi_lin_poly = y_multi_lin_poly.multiply(&mut i_rep);
+                    let i_rep = check_bit(1);
+                    y_multi_lin_poly = y_multi_lin_poly * i_rep;
                 }
             }
             res = res.add(y_multi_lin_poly);
@@ -279,12 +218,68 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
 
         res
     }
+}
+
+// Implement native addition for Multilinear Polynomial
+impl<F: PrimeField> Add for MultilinearPolynomial<F> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        let mut res = self.clone();
+        res.terms.extend(rhs.terms);
+        res.simplify()
+    }
+}
+
+// Implement native multiplication for multilinear polynomial
+impl<F: PrimeField> Mul for MultilinearPolynomial<F> {
+    type Output = Self;
+
+    fn mul(mut self, rhs: Self) -> Self::Output {
+        let mut res = MultilinearPolynomial::new(vec![]);
+        for i in 0..self.terms.len() {
+            for j in 0..rhs.terms.len() {
+                res.terms
+                    .push(self.terms[i].multiply(&mut rhs.terms[j].clone()));
+            }
+        }
+        res.simplify()
+    }
+}
+
+pub trait MultilinearPolynomialTrait<F: PrimeField> {
+    fn partial_eval(&self, x: Vec<(usize, F)>) -> Self;
+    fn evaluate(&self, x: Vec<(usize, F)>) -> F;
+    fn number_of_vars(&self) -> usize;
+    fn to_bytes(&self) -> Vec<u8>;
+    fn relabel(&self) -> Self;
+    fn additive_identity() -> Self;
+}
+
+impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
+    // Partially evaluate a multilinear polynomial
+    // tuple comprise of variable index which is equivalent to the variable
+    // and Field element which is the point to evaluate at
+    fn partial_eval(&self, x: Vec<(usize, F)>) -> Self {
+        let mut res = self.clone();
+        for i in 0..res.terms.len() {
+            for j in 0..x.len() {
+                let (var, val) = x[j];
+                assert!(var <= res.number_of_vars(), "Variable not found");
+                if res.terms[i].vars[var] {
+                    res.terms[i].coefficient *= val;
+                    res.terms[i].vars[var] = false;
+                };
+            }
+        }
+        res.simplify()
+    }
 
     // Relabels the variables to account for variables that have been evaluated
-    pub fn relabel(&self) -> MultilinearPolynomial<F> {
+    fn relabel(&self) -> Self {
         let mut res = MultilinearPolynomial::<F>::new(vec![]);
 
-        let mut label_checker = vec![false; self.terms[0].vars.len()];
+        let mut label_checker = vec![false; self.number_of_vars()];
 
         for i in 0..self.terms.len() {
             label_checker = self.terms[i]
@@ -307,6 +302,57 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
         }
 
         res
+    }
+
+    // Fully evaluates a multilinear polynomial
+    fn evaluate(&self, x: Vec<(usize, F)>) -> F {
+        let mut res = self.clone();
+        if res.is_zero() {
+            return F::zero();
+        }
+        assert!(
+            self.number_of_vars() == x.len(),
+            "Must evaluate at all points"
+        );
+
+        for i in 0..res.terms.len() {
+            for j in 0..x.len() {
+                let (var, val) = x[j];
+                assert!(var <= self.terms[0].vars.len(), "Variable not found");
+                if res.terms[i].vars[var] {
+                    res.terms[i].coefficient *= val;
+                    res.terms[i].vars[var] = false;
+                };
+            }
+        }
+        assert!(
+            res.simplify().terms.len() == 1,
+            "All variables should be evaluated"
+        );
+        res.simplify().terms[0].coefficient
+    }
+
+    fn number_of_vars(&self) -> usize {
+        self.terms[0].vars.len()
+    }
+
+    fn to_bytes(&self) -> Vec<u8> {
+        let mut res: Vec<u8> = Vec::new();
+        for i in 0..self.terms.len() {
+            res.append(&mut self.terms[i].coefficient.into_bigint().to_bytes_be());
+            res.append(
+                &mut self.terms[i]
+                    .vars
+                    .iter()
+                    .map(|a| *a as u8)
+                    .collect::<Vec<u8>>(),
+            );
+        }
+        res
+    }
+
+    fn additive_identity() -> Self {
+        MultilinearPolynomial::new(vec![])
     }
 }
 
@@ -341,6 +387,8 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
 mod tests {
     use ark_ff::{Fp64, MontBackend, MontConfig};
 
+    use crate::polynomials::multilinear_poly::MultilinearPolynomialTrait;
+
     use super::{MultilinearMonomial, MultilinearPolynomial};
 
     #[derive(MontConfig)]
@@ -355,12 +403,8 @@ mod tests {
 
         let multilin_poly = MultilinearPolynomial::new(vec![term1]);
 
-        let res = multilin_poly
-            .clone()
-            .add(multilin_poly.clone())
-            .truncate()
-            .add(multilin_poly)
-            .truncate();
+        let res =
+            ((multilin_poly.clone() + multilin_poly.clone()).truncate() + multilin_poly).truncate();
 
         assert_eq!(
             res,
@@ -380,10 +424,7 @@ mod tests {
         let multilin_poly1 = MultilinearPolynomial::new(vec![term1.clone(), term2.clone()]); // 5ac + 5abc
         let multilin_poly2 = MultilinearPolynomial::new(vec![term2, term1]); //5abc + 5ac
 
-        let res = multilin_poly1
-            .clone()
-            .add(multilin_poly2.clone())
-            .truncate();
+        let res = (multilin_poly1.clone() + multilin_poly2.clone()).truncate();
 
         assert_eq!(
             res,
@@ -401,7 +442,7 @@ mod tests {
         let term2 = MultilinearMonomial::new(Fq::from(8), vec![false, true, true]); // 8bc
         let multi_lin_poly = MultilinearPolynomial::new(vec![term1, term2]); // 3ab + 8bc
 
-        let res = multi_lin_poly.partial_eval(vec![(1, Fq::from(3))]); // evaluating at b = 3
+        let res = MultilinearPolynomialTrait::partial_eval(&multi_lin_poly, vec![(1, Fq::from(3))]); // evaluating at b = 3
         assert_eq!(
             res,
             MultilinearPolynomial::new(vec![
@@ -475,9 +516,9 @@ mod tests {
     fn test_multilinear_polynomial_mul() {
         let term1 = MultilinearMonomial::new(Fq::from(3), vec![true, true, false]); // 3ab
         let term2 = MultilinearMonomial::new(Fq::from(8), vec![false, true, true]); // 8bc
-        let mut multi_lin_poly = MultilinearPolynomial::new(vec![term1, term2]); // 3ab + 8bc
+        let multi_lin_poly = MultilinearPolynomial::new(vec![term1, term2]); // 3ab + 8bc
 
-        let res = multi_lin_poly.clone().multiply(&mut multi_lin_poly);
+        let res = multi_lin_poly.clone() * multi_lin_poly;
         // 3ab(3de + 8ef) + 8bc(3de + 8ef)
         // 9abde + 24abef + 24bcde + 64bcef
         dbg!(res.clone());
@@ -524,9 +565,9 @@ mod tests {
 
         let term1 = MultilinearMonomial::new(Fq::from(3), vec![true, true, false]); // 3ab
         let term2 = MultilinearMonomial::new(Fq::from(8), vec![false, true, true]); // 8bc
-        let mut multi_lin_poly = MultilinearPolynomial::new(vec![term1, term2]); // 3ab + 8bc
+        let multi_lin_poly = MultilinearPolynomial::new(vec![term1, term2]); // 3ab + 8bc
 
-        let res = constant_poly.multiply(&mut multi_lin_poly);
+        let res = constant_poly * multi_lin_poly;
 
         assert!(
             res == MultilinearPolynomial::new(vec![
@@ -615,7 +656,7 @@ mod tests {
     fn test_sum_over_boolean_hypercube() {
         let poly = MultilinearPolynomial::new(vec![
             MultilinearMonomial::new(Fq::from(2), vec![true, true, false]),
-            MultilinearMonomial::new(Fq::from(3), vec![false, true, true])
+            MultilinearMonomial::new(Fq::from(3), vec![false, true, true]),
         ]);
         let res = poly.sum_over_the_boolean_hypercube();
         dbg!(&res);
