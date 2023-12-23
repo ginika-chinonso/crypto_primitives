@@ -1,7 +1,7 @@
 use ark_poly::{DenseMultilinearExtension, MultilinearExtension};
 use criterion::{criterion_group, criterion_main, Criterion};
 use crypto_primitives::polynomials::multilinear_poly::{
-    MultilinearMonomial, MultilinearPolynomial,
+    MultilinearMonomial, MultilinearPolynomial, MultilinearPolynomialTrait,
 };
 
 use std::vec;
@@ -44,7 +44,7 @@ fn multilinear_poly_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("multilinear addition", |b| {
-        b.iter(|| poly.clone().add(poly1.clone()))
+        b.iter(|| poly.clone() + poly1.clone())
     });
 
     c.bench_function("multilinear interpolate", |b| {
@@ -60,7 +60,7 @@ fn multilinear_poly_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("multilinear multiplication", |b| {
-        b.iter(|| poly.clone().multiply(&mut poly1.clone()))
+        b.iter(|| poly.clone() * poly1.clone())
     });
 
     c.bench_function("multilinear scalar mul", |b| {
