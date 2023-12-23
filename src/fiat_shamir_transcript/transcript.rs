@@ -2,7 +2,7 @@ use ark_ff::{BigInteger, PrimeField};
 use sha3::{Digest, Keccak256};
 
 use crate::polynomials::{
-    multilinear_poly::MultilinearPolynomial, univariate_poly::UnivariatePolynomial,
+    multilinear_poly::MultilinearPolynomialTrait, univariate_poly::UnivariatePolynomial,
 };
 
 pub struct Transcript {
@@ -47,26 +47,10 @@ impl Transcript {
         }
     }
 
-    pub fn add_multivariate_poly<F: PrimeField>(
+    pub fn add_multivariate_poly<F: PrimeField, MPT: MultilinearPolynomialTrait<F>>(
         &mut self,
-        multilinear_poly: &MultilinearPolynomial<F>,
+        multilinear_poly: &MPT,
     ) {
-        for i in 0..multilinear_poly.terms.len() {
-            self.append(
-                multilinear_poly.terms[i]
-                    .coefficient
-                    .into_bigint()
-                    .to_bytes_be()
-                    .as_slice(),
-            );
-            self.append(
-                multilinear_poly.terms[i]
-                    .vars
-                    .iter()
-                    .map(|a| *a as u8)
-                    .collect::<Vec<u8>>()
-                    .as_slice(),
-            );
-        }
+        self.append(&multilinear_poly.to_bytes());
     }
 }

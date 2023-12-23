@@ -1,16 +1,16 @@
 use crate::polynomials::{
-    multilinear_poly::MultilinearPolynomial, univariate_poly::UnivariatePolynomial,
+    multilinear_poly::MultilinearPolynomialTrait, univariate_poly::UnivariatePolynomial,
 };
 use ark_ff::PrimeField;
 
-pub struct Verifier<F: PrimeField> {
-    pub initial_poly: MultilinearPolynomial<F>,
+pub struct Verifier<F: PrimeField, MPT: MultilinearPolynomialTrait<F>> {
+    pub initial_poly: MPT,
     pub challenges: Vec<F>,
     pub last_round_sum: F,
 }
 
-impl<F: PrimeField> Verifier<F> {
-    pub fn new(poly: MultilinearPolynomial<F>, claimed_sum: F) -> Self {
+impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F>> Verifier<F, MPT> {
+    pub fn new(poly: MPT, claimed_sum: F) -> Self {
         Verifier {
             initial_poly: poly,
             challenges: vec![],
@@ -35,7 +35,7 @@ impl<F: PrimeField> Verifier<F> {
 
         self.last_round_sum = poly.evaluate(self.challenges[self.challenges.len() - 1]);
 
-        if self.challenges.len() == self.initial_poly.terms[0].vars.len() {
+        if self.challenges.len() == self.initial_poly.number_of_vars() {
             return self.last_round_sum
                 == self
                     .initial_poly

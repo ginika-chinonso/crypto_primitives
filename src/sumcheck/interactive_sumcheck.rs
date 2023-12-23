@@ -12,10 +12,7 @@ mod tests {
     use ark_ff::{Fp64, MontBackend, MontConfig};
 
     use crate::{
-        polynomials::{
-            multilinear_poly::{MultilinearMonomial, MultilinearPolynomial},
-            univariate_poly::UnivariatePolynomial,
-        },
+        polynomials::multilinear_poly::{MultilinearMonomial, MultilinearPolynomial},
         sumcheck::prover::Prover,
     };
 
@@ -24,11 +21,6 @@ mod tests {
     #[generator = "3"]
     pub struct FqConfig;
     pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
-
-    pub fn get_binary_string(index: usize, max_bit_count: usize) -> String {
-        let binary = format!("{:b}", index);
-        "0".repeat(max_bit_count - binary.len()) + &binary
-    }
 
     // #[test]
     // fn test_sumcheck() {
@@ -140,16 +132,31 @@ mod tests {
         let prover = Prover::new(poly, Fq::from(10));
 
         let round_1_poly = prover.prove(&vec![]);
-
-        assert!(round_1_poly == UnivariatePolynomial::new(vec![Fq::from(3), Fq::from(4)]));
+        assert!(
+            round_1_poly
+                == MultilinearPolynomial::new(vec![
+                    MultilinearMonomial::new(Fq::from(3), vec![false]),
+                    MultilinearMonomial::new(Fq::from(4), vec![true]),
+                ])
+        );
 
         let round_2_poly = prover.prove(&vec![Fq::from(5)]);
-
-        assert!(round_2_poly == UnivariatePolynomial::new(vec![Fq::from(0), Fq::from(23)]));
+        assert!(
+            round_2_poly
+                == MultilinearPolynomial::new(vec![MultilinearMonomial::new(
+                    Fq::from(23),
+                    vec![true]
+                ),])
+        );
 
         let round_3_poly = prover.prove(&vec![Fq::from(5), Fq::from(9)]);
-
-        assert!(round_3_poly == UnivariatePolynomial::new(vec![Fq::from(90), Fq::from(27)]));
+        assert!(
+            round_3_poly
+                == MultilinearPolynomial::new(vec![
+                    MultilinearMonomial::new(Fq::from(90), vec![false]),
+                    MultilinearMonomial::new(Fq::from(27), vec![true]),
+                ])
+        );
     }
 
     // #[test]

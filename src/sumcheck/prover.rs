@@ -1,5 +1,5 @@
 use crate::polynomials::{
-    multilinear_poly::MultilinearPolynomial, univariate_poly::UnivariatePolynomial,
+    multilinear_poly::MultilinearPolynomialTrait, univariate_poly::UnivariatePolynomial,
 };
 use ark_ff::PrimeField;
 
@@ -11,14 +11,16 @@ pub struct Transcript<F: PrimeField> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Prover<F: PrimeField> {
-    pub initial_poly: MultilinearPolynomial<F>,
+pub struct Prover<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> {
+    pub initial_poly: MPT,
     pub initial_sum: F,
     pub rounds_transcript: Vec<Transcript<F>>,
 }
 
-impl<F: PrimeField> Prover<F> {
-    pub fn new(poly: MultilinearPolynomial<F>, sum: F) -> Self {
+impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<Output = MPT>>
+    Prover<F, MPT>
+{
+    pub fn new(poly: MPT, sum: F) -> Self {
         Prover {
             initial_poly: poly.clone(),
             initial_sum: sum,
@@ -26,15 +28,14 @@ impl<F: PrimeField> Prover<F> {
         }
     }
 
-    pub fn prove(&self, challenges: &[F]) -> UnivariatePolynomial<F> {
-        let mut num_of_vars = self.initial_poly.terms[0].vars.len();
-        let mut round_poly = MultilinearPolynomial::<F>::new(vec![]);
+    pub fn prove(&self, challenges: &[F]) -> MPT {
+        let mut num_of_vars = self.initial_poly.number_of_vars();
+        let mut round_poly = MPT::additive_identity();
+
         num_of_vars -= challenges.len();
         num_of_vars -= 1;
 
         for i in 0..2_usize.pow(num_of_vars as u32) {
-            dbg!(&i);
-            dbg!(&num_of_vars);
             let eval_points = get_binary_string(i, num_of_vars);
             let mut eval_points_as_field: Vec<(usize, F)> = eval_points
                 .chars()
@@ -56,10 +57,9 @@ impl<F: PrimeField> Prover<F> {
                 .clone()
                 .partial_eval(eval_points_as_field)
                 .relabel();
-            round_poly = round_poly.add(eval_res.clone());
+            round_poly = round_poly + eval_res;
         }
-        dbg!(&round_poly);
-        UnivariatePolynomial::try_from(round_poly.relabel()).unwrap()
+        round_poly.relabel()
     }
 }
 
