@@ -1,6 +1,4 @@
-use crate::polynomials::multilinear_poly::{
-    MultilinearMonomial, MultilinearPolynomial,
-};
+use crate::polynomials::multilinear_poly::{MultilinearMonomial, MultilinearPolynomial};
 use ark_ff::PrimeField;
 
 // Get padded binary string of a decimal number

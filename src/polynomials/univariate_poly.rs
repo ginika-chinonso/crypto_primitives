@@ -198,9 +198,7 @@ impl<F: PrimeField> Add for UnivariatePolynomial<F> {
 mod tests {
     use std::vec;
 
-    use crate::polynomials::multilinear_poly::{
-        MultilinearMonomial, MultilinearPolynomial,
-    };
+    use crate::polynomials::multilinear_poly::{MultilinearMonomial, MultilinearPolynomial};
 
     use super::UnivariatePolynomial;
     use ark_ff::{Fp64, MontBackend, MontConfig};
