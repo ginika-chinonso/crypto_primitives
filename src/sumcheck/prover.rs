@@ -1,5 +1,8 @@
-use crate::polynomials::{
-    multilinear_poly::MultilinearPolynomialTrait, univariate_poly::UnivariatePolynomial,
+use crate::{
+    polynomials::{
+        multilinear_poly::MultilinearPolynomialTrait, univariate_poly::UnivariatePolynomial,
+    },
+    utils::get_binary_string,
 };
 use ark_ff::PrimeField;
 
@@ -61,13 +64,4 @@ impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<O
         }
         round_poly.relabel()
     }
-}
-
-// Get padded binary string of a decimal number
-fn get_binary_string(index: usize, max_bit_count: usize) -> String {
-    if max_bit_count == 0 {
-        return "".to_string();
-    }
-    let binary = format!("{:b}", index);
-    "0".repeat(max_bit_count - binary.len()) + &binary
 }

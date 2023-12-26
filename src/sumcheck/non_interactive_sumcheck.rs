@@ -10,16 +10,16 @@ use super::prover::Prover;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Proof<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> {
-    initial_poly: MPT,
     sum: F,
+    number_of_vars: usize,
     rounds_poly: Vec<MPT>,
 }
 
 impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> Proof<F, MPT> {
-    pub fn new(initial_poly: MPT, sum: F) -> Self {
+    pub fn new(sum: F, number_of_vars: usize) -> Self {
         Self {
-            initial_poly,
             sum,
+            number_of_vars,
             rounds_poly: vec![],
         }
     }
@@ -30,74 +30,105 @@ pub struct Sumcheck {}
 impl Sumcheck {
     pub fn prove<
         F: PrimeField,
-        MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<Output = MPT>,
+        MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<Output = MPT> + std::fmt::Debug,
     >(
-        poly: MPT,
+        initial_poly: MPT,
         sum: F,
     ) -> Proof<F, MPT> {
-        let mut proof = Proof::new(poly.clone(), sum);
+        let mut proof = Proof::new(sum, initial_poly.number_of_vars());
         let mut transcript = Transcript::new();
         let mut challenges: Vec<F> = vec![];
 
-        transcript.add_multivariate_poly(&poly);
+        // transcript.add_multivariate_poly(&poly);
         transcript.append(sum.into_bigint().to_bytes_be().as_slice());
 
-        let prover = Prover::<F, MPT>::new(poly.clone(), sum);
+        let prover = Prover::<F, MPT>::new(initial_poly.clone(), sum);
 
-        for _ in 0..poly.number_of_vars() {
-            // if i == 0 {
-            //     let round_poly = prover.prove(&[]);
-            //     proof.rounds_poly.push(round_poly);
-            // };
+        for _ in 0..initial_poly.number_of_vars() {
             let round_poly = prover.prove(&challenges);
+            dbg!(&round_poly);
             transcript.add_multivariate_poly(&round_poly);
             proof.rounds_poly.push(round_poly);
 
             challenges.push(transcript.sample_field_element());
-            dbg!(&challenges);
         }
-
+        dbg!(&challenges);
         proof
     }
 
     pub fn verify<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::fmt::Debug>(
-        proof: Proof<F, MPT>,
+        mut proof: Proof<F, MPT>,
+        initial_poly: MPT,
     ) -> bool {
+        let challenges = Sumcheck::verify_partial(&mut proof);
+        dbg!(&challenges);
+
+        let res = initial_poly.evaluate(challenges);
+
+        dbg!(&proof.sum);
+        dbg!(&res);
+
+        proof.sum == res
+    }
+
+    // pub fn prove_partial<
+    //     F: PrimeField,
+    //     MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<Output = MPT>,
+    // >(
+    //     initial_poly: MPT,
+    //     poly: MPT,
+    //     sum: F,
+    // ) -> Proof<F, MPT> {
+    //     let mut proof = Proof::new(sum);
+    //     let mut transcript = Transcript::new();
+    //     let mut challenges: Vec<F> = vec![];
+
+    //     transcript.add_multivariate_poly(&poly);
+    //     transcript.append(sum.into_bigint().to_bytes_be().as_slice());
+
+    //     let prover = Prover::<F, MPT>::new(poly.clone(), sum);
+
+    //     for _ in 0..poly.number_of_vars() - 1{
+
+    //         let round_poly = prover.prove(&challenges);
+    //         transcript.add_multivariate_poly(&round_poly);
+    //         proof.rounds_poly.push(round_poly);
+
+    //         challenges.push(transcript.sample_field_element());
+    //         dbg!(&challenges);
+    //     }
+
+    //     proof
+    // }
+
+    pub fn verify_partial<
+        F: PrimeField,
+        MPT: MultilinearPolynomialTrait<F> + Clone + std::fmt::Debug,
+    >(
+        proof: &mut Proof<F, MPT>,
+    ) -> Vec<(usize, F)> {
         let mut transcript = Transcript::new();
         let mut challenges: Vec<(usize, F)> = vec![];
-        transcript.add_multivariate_poly(&proof.initial_poly);
+        // transcript.add_multivariate_poly(&proof.initial_poly);
         transcript.append(proof.sum.into_bigint().to_bytes_be().as_slice());
 
-        for i in 0..proof.initial_poly.number_of_vars() {
+        for i in 0..proof.number_of_vars {
             let verifier_check = proof.rounds_poly[i].evaluate(vec![(0, F::zero())])
                 + proof.rounds_poly[i].evaluate(vec![(0, F::one())]);
 
-            if i == 0 {
                 if verifier_check != proof.sum {
-                    return false;
+                    return challenges;
                 };
-            };
 
             transcript.add_multivariate_poly(&proof.rounds_poly[i]);
             challenges.extend(vec![(i, transcript.sample_field_element::<F>())]);
 
-            let last_round_sum = if i == 0 {
-                proof.sum
-            } else {
-                let (_, challenge) = challenges[i];
-                proof.rounds_poly[i].evaluate(vec![(0, challenge)])
-            };
-
-            if challenges.len() == proof.initial_poly.number_of_vars() {
-                let res = proof
-                    .initial_poly
-                    .evaluate(challenges.into_iter().collect());
-
-                return last_round_sum == res;
-            }
+            let (_, challenge) = challenges[i];
+            dbg!(&proof.sum);
+            proof.sum = proof.rounds_poly[i].evaluate(vec![(0, challenge)]);
+            dbg!(&proof.sum);
         }
-
-        true
+        challenges
     }
 }
 
@@ -124,7 +155,13 @@ mod tests {
             ]),
             Fq::from(10),
         );
-        let accepted = Sumcheck::verify(proof);
+        let accepted = Sumcheck::verify(
+            proof,
+            MultilinearPolynomial::new(vec![
+                MultilinearMonomial::new(Fq::from(2), vec![true, true, false]),
+                MultilinearMonomial::new(Fq::from(3), vec![false, true, true]),
+            ]),
+        );
 
         assert!(accepted);
     }

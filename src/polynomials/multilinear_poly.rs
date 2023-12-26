@@ -6,6 +6,8 @@ use std::{
 use ark_ff::{BigInteger, PrimeField};
 use serde::{Deserialize, Serialize};
 
+use crate::utils::get_binary_string;
+
 // Multilinear Monomial representation where
 // coefficient = Coefficient of the monomial
 // vars = variables vector where index represents variable
@@ -35,12 +37,6 @@ fn selector_to_index(selector: &[bool]) -> usize {
     }
 
     sum
-}
-
-// Get padded binary string of a decimal number
-fn get_binary_string(index: usize, max_bit_count: usize) -> String {
-    let binary = format!("{:b}", index);
-    "0".repeat(max_bit_count - binary.len()) + &binary
 }
 
 // Returns the multilinear polynomial representing a bit value
