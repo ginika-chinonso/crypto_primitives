@@ -9,13 +9,13 @@ use crate::{
 use super::prover::Prover;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Proof<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> {
+pub struct SumcheckProof<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> {
     sum: F,
     number_of_vars: usize,
     rounds_poly: Vec<MPT>,
 }
 
-impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> Proof<F, MPT> {
+impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> SumcheckProof<F, MPT> {
     pub fn new(sum: F, number_of_vars: usize) -> Self {
         Self {
             sum,
@@ -34,8 +34,8 @@ impl Sumcheck {
     >(
         initial_poly: MPT,
         sum: F,
-    ) -> Proof<F, MPT> {
-        let mut proof = Proof::new(sum, initial_poly.number_of_vars());
+    ) -> SumcheckProof<F, MPT> {
+        let mut proof = SumcheckProof::new(sum, initial_poly.number_of_vars());
         let mut transcript = Transcript::new();
         let mut challenges: Vec<F> = vec![];
 
@@ -57,7 +57,7 @@ impl Sumcheck {
     }
 
     pub fn verify<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::fmt::Debug>(
-        mut proof: Proof<F, MPT>,
+        mut proof: SumcheckProof<F, MPT>,
         initial_poly: MPT,
     ) -> bool {
         let challenges = Sumcheck::verify_partial(&mut proof);
@@ -105,7 +105,7 @@ impl Sumcheck {
         F: PrimeField,
         MPT: MultilinearPolynomialTrait<F> + Clone + std::fmt::Debug,
     >(
-        proof: &mut Proof<F, MPT>,
+        proof: &mut SumcheckProof<F, MPT>,
     ) -> Vec<(usize, F)> {
         let mut transcript = Transcript::new();
         let mut challenges: Vec<(usize, F)> = vec![];

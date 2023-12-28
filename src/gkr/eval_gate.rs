@@ -1,7 +1,12 @@
+use std::ops::Add;
+
 use ark_ff::{BigInteger, PrimeField};
 
 use crate::polynomials::multilinear_poly::{MultilinearPolynomial, MultilinearPolynomialTrait};
 
+
+/// Evalgate is eqivalent to f(b, c)
+/// f(b, c) = add_i(a, b, c)(w_mle(b) + w_mle(c)) + add_i(a, b, c)(w_mle(b) + w_mle(c))
 #[derive(Debug, Clone)]
 pub struct EvalGate<F: PrimeField, MPT: MultilinearPolynomialTrait<F>> {
     pub r: Vec<F>,
@@ -70,7 +75,6 @@ impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> MultilinearPolyn
         EvalGate::new(self.r.clone(), add_i_mle, mul_i_mle, w_b_mle, w_c_mle)
     }
 
-    // f(b, c) = add_i(a, b, c)(w_mle(b) + w_mle(c)) + add_i(a, b, c)(w_mle(b) + w_mle(c))
     fn evaluate(&self, x: Vec<(usize, F)>) -> F {
         let mut b: Vec<(usize, F)> = vec![];
         let mut c: Vec<(usize, F)> = vec![];
@@ -145,6 +149,26 @@ impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> MultilinearPolyn
             mul_i_mle: MultilinearPolynomial::new(vec![]),
             w_b_mle: MPT::additive_identity(),
             w_c_mle: MPT::additive_identity(),
+        }
+    }
+
+}
+
+
+// Implement native addition for Evalgate
+impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<Output = MPT>> Add for EvalGate<F, MPT> {
+    type Output = Self;
+
+    fn add(self, rhs: Self) -> Self {
+        let mut r = self.r;
+        r.extend(rhs.r);
+
+        Self { 
+            r, 
+            add_i_mle: self.add_i_mle + rhs.add_i_mle,
+            mul_i_mle: self.mul_i_mle + rhs.mul_i_mle, 
+            w_b_mle: self.w_b_mle + rhs.w_b_mle, 
+            w_c_mle: self.w_c_mle + rhs.w_c_mle 
         }
     }
 }

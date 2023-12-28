@@ -88,6 +88,15 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
             Option::None => self,
         }
     }
+
+    pub fn additive_identity() -> Self {
+        Self { coefficients: vec![] }
+    }
+
+    pub fn multiplicative_identity() -> Self {
+        Self { coefficients: vec![F::one()] }
+    }
+
 }
 
 // Implement native multiplication for univariate polynomial

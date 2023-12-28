@@ -58,17 +58,20 @@ impl Circuit {
         res
     }
 
+    pub fn w_mle<F: PrimeField>(&self, layer_eval: Vec<F>) -> MultilinearPolynomial<F> {
+        MultilinearPolynomial::interpolate(layer_eval)
+    }
+
     pub fn layer_mle<F: PrimeField>(&self, layer: usize) -> [MultilinearPolynomial<F>; 2] {
         let layer_len = self.layers[layer].add_gates.len() + self.layers[layer].mul_gates.len();
         let add_i_mle = add_i_mle(&self.layers[layer].add_gates, layer_len);
         let mul_i_mle = mul_i_mle(&self.layers[layer].mul_gates, layer_len);
         [add_i_mle, mul_i_mle]
     }
+
+
 }
 
-pub fn w_mle<F: PrimeField>(layer_eval: Vec<F>) -> MultilinearPolynomial<F> {
-    MultilinearPolynomial::interpolate(layer_eval)
-}
 
 #[derive(Debug, Clone)]
 pub struct Wire {
