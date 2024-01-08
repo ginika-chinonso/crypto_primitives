@@ -46,23 +46,25 @@ impl GKR {
         transcript.append(&output_gate_w_mle.to_bytes());
         
         let mut r = transcript.sample_n_field_elements(output_gate_w_mle.number_of_vars());
-
+        
         
         let m_0_evalpoints = r.clone().into_iter().enumerate().collect();
         
         let mut m = output_gate_w_mle.clone().evaluate(&m_0_evalpoints);
-
+        
         gkr_proof.output = output_gate_w_mle;
+        
+        
+        for i in 1..circuit_eval.len() {
+            
+            dbg!(&i);
+            dbg!(&circuit_eval.len());
 
-
-        for i in 0..circuit.depth {
-
-            // dbg!(&r);
-
-            let [add_i_mle, mul_i_mle] = circuit.layer_mle(i);
-
+            
+            let [add_i_mle, mul_i_mle] = circuit.layer_mle(i - 1);
+            
             let layer_w_mle = circuit.w_mle(circuit_eval[i].clone());
-
+            
             let layer_eval_gate = EvalGate::new(
                 &r,
                 &vec![add_i_mle],
@@ -70,15 +72,19 @@ impl GKR {
                 &vec![layer_w_mle.clone()],
                 &vec![layer_w_mle],
             );
-
+            
             let round_sumcheck_proof = Sumcheck::prove(&layer_eval_gate, &m);
+            // dbg!(&round_sumcheck_proof);
+            // dbg!(&m);
             
             let (b, c) = round_sumcheck_proof.challenges.split_at(round_sumcheck_proof.challenges.len() / 2);
             
             let l = l_function(&b, &c);
             let q = q_function(&l, &circuit.w_mle(circuit_eval[i].clone())).unwrap();
+            println!("Mid point");
 
             transcript.append(round_sumcheck_proof.to_bytes().as_slice());
+
 
             gkr_proof.sumcheck_proofs.push(round_sumcheck_proof);
 
@@ -92,6 +98,8 @@ impl GKR {
 
             gkr_proof.q_funcs.push(q);
         }
+
+        println!("Done with proving");
 
         gkr_proof
     }
@@ -109,18 +117,20 @@ impl GKR {
         transcript.append(proof.output.to_bytes().as_slice());
 
         let mut r = transcript.sample_n_field_elements(proof.output.number_of_vars());
-
+        
         let mut m = proof.output.evaluate(&r.clone().into_iter().enumerate().collect());
-
+        
         // To check the provers claim, the verifier applies the sumcheck protocol to the polynomial
         // f(b, c) = add_i(a, b, c)(w_mle(b) + w_mle(c)) + add_i(a, b, c)(w_mle(b) + w_mle(c))
-
+        
         for i in 0..proof.sumcheck_proofs.len() {
-
-            transcript.add_univariate_poly(&proof.q_funcs[i]);
+            
             transcript.append(proof.sumcheck_proofs[i].to_bytes().as_slice());
-
-
+            transcript.add_univariate_poly(&proof.q_funcs[i]);
+            
+            
+            dbg!(&m);
+            dbg!(&proof.sumcheck_proofs[i].sum);
             if proof.sumcheck_proofs[i].sum != m {
                 return Ok(false);
             }
@@ -183,8 +193,8 @@ mod test {
     use ark_ff::{Fp64, MontBackend, MontConfig};
 
     use crate::{
-        gkr::circuit::{Circuit, Layer, Wire},
-        polynomials::multilinear_poly::MultilinearPolynomial,
+        gkr::{circuit::{Circuit, Layer, Wire}, eval_gate::EvalGate},
+        polynomials::multilinear_poly::{MultilinearPolynomial, MultilinearPolynomialTrait}, sumcheck::non_interactive_sumcheck::Sumcheck,
     };
 
     use super::{GKRProof, GKR};
@@ -228,5 +238,41 @@ mod test {
         let verifier = GKR::verify(circuit_input, gkr_proof, circuit).unwrap();
 
         assert!(verifier, "Proof not accepted");
+    }
+
+    #[test]
+    fn test_sumcheck_eval() {
+        let circuit = create_circuit();
+        let circuit_input = vec![
+            Fq::from(5),
+            Fq::from(2),
+            Fq::from(3),
+            Fq::from(4),
+            Fq::from(9),
+            Fq::from(8),
+        ];
+        let circuit_eval = circuit.evaluate(circuit_input);
+        let [add_i, mul_i] = circuit.layer_mle(1);
+        let w_2 = circuit.w_mle(circuit_eval[2].clone());
+        let gate_ext = EvalGate::new(
+            &vec![Fq::from(0)],
+            &vec![add_i],
+            &vec![mul_i],
+            &vec![w_2.clone()],
+            &vec![w_2],
+        );
+        dbg!(gate_ext.number_of_vars());
+        assert_eq!(
+            Fq::from(2),
+            gate_ext.evaluate(&vec![
+                (0, Fq::from(0)),
+                (1, Fq::from(0)),
+                (2, Fq::from(0)),
+                (3, Fq::from(1)),
+            ])
+        );
+
+        let sumcheck_proof = Sumcheck::prove(&gate_ext, &Fq::from(2));
+        assert!(Sumcheck::verify( sumcheck_proof, gate_ext).unwrap());
     }
 }

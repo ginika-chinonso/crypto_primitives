@@ -34,7 +34,7 @@ impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<O
     pub fn prove(&self, challenges: &[F]) -> MPT {
         let mut num_of_vars = self.initial_poly.number_of_vars();
 
-        dbg!(&num_of_vars);
+        // dbg!(&num_of_vars);
 
         let mut round_poly = MPT::additive_identity();
 
@@ -66,7 +66,7 @@ impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<O
             round_poly = round_poly + eval_res;
         }
         let relabeled_round_poly = round_poly.relabel();
-        dbg!(&relabeled_round_poly.number_of_vars());
+        // dbg!(&relabeled_round_poly.number_of_vars());
         relabeled_round_poly
     }
 }

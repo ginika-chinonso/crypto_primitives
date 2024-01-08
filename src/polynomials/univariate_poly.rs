@@ -66,7 +66,7 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
     }
 
     // Checks if polynomial is a zero polynomial
-    pub fn is_zero(self) -> bool {
+    pub fn is_zero(&self) -> bool {
         if self.coefficients.len() == 0 {
             true
         } else {
@@ -177,29 +177,26 @@ impl<F: PrimeField> Add for UnivariatePolynomial<F> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        let mut res_array = vec![];
 
-        let mut i = 0;
+        if self.is_zero() {
+            return rhs.clone();
+        }
 
-        if self.coefficients.len() <= rhs.coefficients.len() {
-            loop {
-                if i == self.coefficients.len() {
-                    break;
-                }
-                res_array.push(self.coefficients[i] + rhs.coefficients[i]);
-                i += 1;
-            }
-            res_array.append(&mut rhs.coefficients[i..].to_vec());
+        if rhs.is_zero() {
+            return self.clone();
+        }
+
+        let (mut longer, shorter) = if self.coefficients.len() >= rhs.coefficients.len() {
+            (self.coefficients.clone(), &rhs.coefficients)
         } else {
-            loop {
-                if i == rhs.coefficients.len() {
-                    break;
-                }
-                res_array.append(&mut self.coefficients[i..].to_vec());
-            }
+            (rhs.coefficients.clone(), &self.coefficients)
         };
 
-        Self::new(res_array)
+        for i in 0..shorter.len() {
+            longer[i] += shorter[i];
+        }
+
+        Self::new(longer)
     }
 }
 
@@ -237,6 +234,17 @@ mod tests {
         let poly2 = UnivariatePolynomial::new(coeffs2);
         let poly_res = poly1 + poly2;
         let res_coeffs = vec![Fq::from(3), Fq::from(5), Fq::from(7)];
+        assert_eq!(poly_res, UnivariatePolynomial::new(res_coeffs));
+    }
+
+    #[test]
+    fn test_add_poly_buggy_test() {
+        let coeffs1 = vec![Fq::from(1), Fq::from(16), Fq::from(13)];
+        let coeffs2 = vec![Fq::from(16), Fq::from(9)];
+        let poly1 = UnivariatePolynomial::new(coeffs1);
+        let poly2 = UnivariatePolynomial::new(coeffs2);
+        let poly_res = poly1 + poly2;
+        let res_coeffs = vec![Fq::from(17), Fq::from(25), Fq::from(13)];
         assert_eq!(poly_res, UnivariatePolynomial::new(res_coeffs));
     }
 
