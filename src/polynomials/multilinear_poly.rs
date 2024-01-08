@@ -289,8 +289,8 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
             return F::zero();
         }
 
-        dbg!(&self.number_of_vars());
-        dbg!(&x.len());
+        // dbg!(&self.number_of_vars());
+        // dbg!(&x.len());
 
         assert!(
             x.len() >= self.number_of_vars(),

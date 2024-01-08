@@ -39,7 +39,7 @@ fn multilinear_poly_benchmark(c: &mut Criterion) {
         b.iter(|| {
             poly3
                 .clone()
-                .evaluate(vec![(0, Fq::from(3)), (1, Fq::from(9)), (2, Fq::from(8))])
+                .evaluate(&vec![(0, Fq::from(3)), (1, Fq::from(9)), (2, Fq::from(8))])
         })
     });
 
