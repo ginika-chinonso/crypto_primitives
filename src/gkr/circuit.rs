@@ -12,50 +12,67 @@ use crate::{
     utils::{check_bit, get_binary_string},
 };
 
+#[derive(Debug, Clone)]
 pub struct Circuit {
     pub layers: Vec<Layer>,
     pub depth: usize,
 }
 
 impl Circuit {
-    pub fn new(layers: Vec<Layer>, depth: usize) -> Self {
+    pub fn new(layers: Vec<Layer>) -> Self {
+        let depth = layers.len();
         Self { layers, depth }
     }
 
+    pub fn depth(&self) -> usize {
+        self.layers.len()
+    }
+
     pub fn evaluate<F: PrimeField>(&self, inputs: Vec<F>) -> Vec<Vec<F>> {
-        // TODO: inner vec capacity should be sum of no of add and mul gates
-        let mut res = vec![vec![F::zero(); self.depth]; self.depth];
-        res[0] = inputs;
-        let mut depth = 1_usize;
-        for i in self.layers.clone() {
-            let mut new_layer = vec![F::zero(); i.add_gates.len() + i.mul_gates.len()];
+        let mut res = vec![vec![F::zero(); inputs.len()]; self.depth + 1];
+        let mut depth = self.depth;
+        res[depth] = inputs;
+
+        loop {
+            if depth == 0 {
+                return res;
+            };
+
+            let mut layer_eval = vec![
+                F::zero();
+                self.layers[depth - 1].add_gates.len()
+                    + self.layers[depth - 1].mul_gates.len()
+            ];
+
             for Wire {
                 output,
                 left,
                 right,
-            } in &i.add_gates
+            } in self.layers[depth - 1].add_gates.clone()
             {
-                assert!(*output <= res[depth - 1].len());
-                assert!(*left <= res[depth - 1].len());
-                assert!(*right <= res[depth - 1].len());
-                new_layer[*output] = res[depth - 1][*left] + res[depth - 1][*right];
+                assert!(output <= res[depth].len());
+                assert!(left <= res[depth].len());
+                assert!(right <= res[depth].len());
+
+                layer_eval[output] = res[depth][left] + res[depth][right];
             }
 
             for Wire {
                 output,
                 left,
                 right,
-            } in &i.mul_gates
+            } in self.layers[depth - 1].mul_gates.clone()
             {
-                assert!(*output <= res[depth - 1].len());
-                assert!(*left <= res[depth - 1].len());
-                assert!(*right <= res[depth - 1].len());
-                new_layer[*output] = res[depth - 1][*left] * res[depth - 1][*right];
+                assert!(output <= res[depth].len());
+                assert!(left <= res[depth].len());
+                assert!(right <= res[depth].len());
+
+                layer_eval[output] = res[depth][left] * res[depth][right];
             }
-            res[depth] = new_layer;
-            depth += 1;
+
+            depth -= 1;
+            res[depth] = layer_eval;
         }
-        res
     }
 
     pub fn w_mle<F: PrimeField>(&self, layer_eval: Vec<F>) -> MultilinearPolynomial<F> {
@@ -63,15 +80,14 @@ impl Circuit {
     }
 
     pub fn layer_mle<F: PrimeField>(&self, layer: usize) -> [MultilinearPolynomial<F>; 2] {
+        // dbg!(&layer);
         let layer_len = self.layers[layer].add_gates.len() + self.layers[layer].mul_gates.len();
+        // dbg!(&layer_len);
         let add_i_mle = add_i_mle(&self.layers[layer].add_gates, layer_len);
         let mul_i_mle = mul_i_mle(&self.layers[layer].mul_gates, layer_len);
         [add_i_mle, mul_i_mle]
     }
-
-
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Wire {
@@ -113,6 +129,7 @@ pub fn get_index_poly<F: PrimeField>(
     max_bit_count: usize,
 ) -> MultilinearPolynomial<F> {
     let mut res = MultilinearPolynomial::new(vec![MultilinearMonomial::new(F::one(), vec![])]);
+    let max_bit_count = format!("{:b}", max_bit_count - 1).len();
     let binary = get_binary_string(index, max_bit_count);
     for j in 0..binary.len() {
         let i_char = binary.chars().nth(j).unwrap();
@@ -135,8 +152,8 @@ pub fn selector_poly<F: PrimeField>(
     layer_len: usize,
 ) -> MultilinearPolynomial<F> {
     let a_poly = get_index_poly(a, layer_len);
-    let b_poly = get_index_poly(b, layer_len);
-    let c_poly = get_index_poly(c, layer_len);
+    let b_poly = get_index_poly(b, layer_len * 2);
+    let c_poly = get_index_poly(c, layer_len * 2);
 
     a_poly * b_poly * c_poly
 }
@@ -162,6 +179,7 @@ mod test {
     use crate::gkr::circuit::selector_poly;
 
     use super::{Circuit, Layer, Wire};
+    use crate::polynomials::multilinear_poly::MultilinearPolynomialTrait;
 
     #[derive(MontConfig)]
     #[modulus = "17"]
@@ -170,19 +188,14 @@ mod test {
     pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
 
     fn create_circuit() -> Circuit {
-        let mut new_circuit = Circuit::new(vec![], 0);
-        let layer0 = Layer::new(
+        let layer0 = Layer::new(vec![], vec![Wire::new(0, 0, 1)]);
+        let layer1 = Layer::new(vec![Wire::new(0, 0, 1)], vec![Wire::new(1, 1, 2)]);
+        let layer2 = Layer::new(
             vec![Wire::new(0, 0, 1), Wire::new(2, 4, 5)],
             vec![Wire::new(1, 2, 3)],
         );
-        let layer1 = Layer::new(vec![Wire::new(0, 0, 1)], vec![Wire::new(1, 1, 2)]);
-        let layer2 = Layer::new(vec![], vec![Wire::new(0, 0, 1)]);
 
-        new_circuit.layers.push(layer0);
-        new_circuit.layers.push(layer1);
-        new_circuit.layers.push(layer2);
-
-        new_circuit.depth = new_circuit.layers.len() + 1;
+        let new_circuit = Circuit::new(vec![layer0, layer1, layer2]);
 
         new_circuit
     }
@@ -200,23 +213,22 @@ mod test {
             Fq::from(8),
         ]);
         dbg!(&circuit_eval);
-        assert!(
-            circuit_eval
-                == vec![
-                    vec![
-                        Fq::from(5),
-                        Fq::from(2),
-                        Fq::from(3),
-                        Fq::from(4),
-                        Fq::from(9),
-                        Fq::from(8)
-                    ],
-                    vec![Fq::from(7), Fq::from(12), Fq::from(17)],
-                    vec![Fq::from(19), Fq::from(204)],
-                    vec![Fq::from(3876)]
-                ],
-            "Incorrect result"
-        );
+
+        let expected_result = vec![
+            vec![Fq::from(3876)],
+            vec![Fq::from(19), Fq::from(204)],
+            vec![Fq::from(7), Fq::from(12), Fq::from(17)],
+            vec![
+                Fq::from(5),
+                Fq::from(2),
+                Fq::from(3),
+                Fq::from(4),
+                Fq::from(9),
+                Fq::from(8),
+            ],
+        ];
+
+        assert!(circuit_eval == expected_result, "Incorrect result");
     }
 
     #[test]
@@ -231,7 +243,7 @@ mod test {
         let a = 5_usize;
         let b = 8_usize;
         let c = 9_usize;
-        let add_i_mle = selector_poly(a, b, c, 4);
+        let add_i_mle = selector_poly(a, b, c, 5);
         let res: Fq = add_i_mle.sum_over_the_boolean_hypercube();
         assert!(res == Fq::from(1), "Incorrect result");
     }
@@ -259,7 +271,7 @@ mod test {
         let layer_0_mle = circuit.layer_mle::<Fq>(0);
         let layer_0_add_gates_mle = layer_0_mle[0].clone();
         let res = layer_0_add_gates_mle.sum_over_the_boolean_hypercube();
-        assert!(res == Fq::from(2), "Wrong number of gates");
+        assert!(res == Fq::from(0), "Wrong number of gates");
         let layer_1_mle = circuit.layer_mle::<Fq>(1);
         let layer_1_add_gates_mle = layer_1_mle[0].clone();
         let res = layer_1_add_gates_mle.sum_over_the_boolean_hypercube();
@@ -267,6 +279,6 @@ mod test {
         let layer_2_mle = circuit.layer_mle::<Fq>(2);
         let layer_2_add_gates_mle = layer_2_mle[0].clone();
         let res = layer_2_add_gates_mle.sum_over_the_boolean_hypercube();
-        assert!(res == Fq::from(0), "Wrong number of gates");
+        assert!(res == Fq::from(2), "Wrong number of gates");
     }
 }

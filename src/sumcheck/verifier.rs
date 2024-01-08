@@ -39,7 +39,7 @@ impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F>> Verifier<F, MPT> {
             return self.last_round_sum
                 == self
                     .initial_poly
-                    .evaluate(self.challenges.clone().into_iter().enumerate().collect());
+                    .evaluate(&self.challenges.clone().into_iter().enumerate().collect());
         }
 
         true

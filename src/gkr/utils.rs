@@ -1,19 +1,30 @@
 use ark_ff::PrimeField;
 
-use crate::polynomials::{univariate_poly::UnivariatePolynomial, multilinear_poly::{MultilinearPolynomialTrait, MultilinearPolynomial}};
+use crate::polynomials::{
+    multilinear_poly::{MultilinearPolynomial, MultilinearPolynomialTrait},
+    univariate_poly::UnivariatePolynomial,
+};
 
-
-pub fn l_function <F: PrimeField>(b: &[F], c: &[F]) -> Vec<UnivariatePolynomial<F>>{
-    b.into_iter().zip(c).map(|(bi, ci)| {
-        let m = *ci - *bi;
-        // b is the intercept
-        // eqn of a straight line = mx + c
-        UnivariatePolynomial::<F>::new(vec![*bi, m])
-    }).collect()
+pub fn l_function<F: PrimeField>(b: &[F], c: &[F]) -> Vec<UnivariatePolynomial<F>> {
+    b.into_iter()
+        .zip(c)
+        .map(|(bi, ci)| {
+            let m = *ci - *bi;
+            // b is the intercept
+            // eqn of a straight line = mx + c
+            UnivariatePolynomial::<F>::new(vec![*bi, m])
+        })
+        .collect()
 }
 
+pub fn eval_l<F: PrimeField>(l: &[UnivariatePolynomial<F>], r: F) -> Vec<F>{
+    l.iter().map(|poly| poly.evaluate(r)).collect()
+}
 
-pub fn q_function<F: PrimeField>(l: &[UnivariatePolynomial<F>], w: &MultilinearPolynomial<F>) -> Result<UnivariatePolynomial<F>, &'static str>{
+pub fn q_function<F: PrimeField>(
+    l: &[UnivariatePolynomial<F>],
+    w: &MultilinearPolynomial<F>,
+) -> Result<UnivariatePolynomial<F>, &'static str> {
     if w.number_of_vars() != l.len() {
         return Err("w vars and l length should match");
     };
@@ -23,44 +34,38 @@ pub fn q_function<F: PrimeField>(l: &[UnivariatePolynomial<F>], w: &MultilinearP
     // where l is univariate
 
     let mut res = UnivariatePolynomial::additive_identity();
-    dbg!(&res);
 
     for term in &w.terms {
-        let mut coeff = UnivariatePolynomial::new(vec![term.coefficient]) ;
-        dbg!(&coeff);
+        let mut coeff = UnivariatePolynomial::new(vec![term.coefficient]);
         for i in 0..term.vars.len() {
             if term.vars[i] {
-                dbg!(&l[i]);
                 coeff = coeff.clone() * l[i].clone();
-                dbg!(&coeff);
             }
-        };
-        dbg!(&res);
-        dbg!(&coeff);
+        }
         res = res + coeff;
     }
 
     Ok(res)
 }
 
-
-
 #[cfg(test)]
 mod test {
 
-    use ark_ff::{MontConfig, MontBackend, Fp64};
-    use crate::polynomials::{univariate_poly::UnivariatePolynomial, multilinear_poly::{MultilinearPolynomial, MultilinearPolynomialTrait, MultilinearMonomial}};
+    use crate::{polynomials::{
+        multilinear_poly::{
+            MultilinearMonomial, MultilinearPolynomial, MultilinearPolynomialTrait,
+        },
+        univariate_poly::UnivariatePolynomial,
+    }, gkr::utils::eval_l};
+    use ark_ff::{Fp64, MontBackend, MontConfig};
 
     use super::{l_function, q_function};
-
 
     #[derive(MontConfig)]
     #[modulus = "17"]
     #[generator = "3"]
     pub struct FqConfig;
     pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
-    
-
 
     #[test]
     fn test_l_function() {
@@ -69,13 +74,13 @@ mod test {
 
         let res = l_function(&b, &c);
 
-        dbg!(&res);
-
-        assert!(res == vec![
-            UnivariatePolynomial::new(vec![Fq::from(2), Fq::from(1)]),
-            UnivariatePolynomial::new(vec![Fq::from(4), Fq::from(-2)]),
-            UnivariatePolynomial::new(vec![Fq::from(6), Fq::from(3)]),
-        ])
+        assert!(
+            res == vec![
+                UnivariatePolynomial::new(vec![Fq::from(2), Fq::from(1)]),
+                UnivariatePolynomial::new(vec![Fq::from(4), Fq::from(-2)]),
+                UnivariatePolynomial::new(vec![Fq::from(6), Fq::from(3)]),
+            ]
+        )
     }
 
     #[test]
@@ -95,16 +100,13 @@ mod test {
 
         // TODO: Evaluate at a random point
         let q_func_eval = q_func.evaluate(Fq::from(8));
-        
-        let l_eval: Vec<Fq> = l.iter().map(|poly| {
-            poly.evaluate(Fq::from(8))
-        }).collect();
-        
+
+        let l_eval: Vec<Fq> = eval_l(&l, Fq::from(8));
+
         let w_eval_points = l_eval.into_iter().enumerate().collect();
 
-        let w_eval = w.evaluate(w_eval_points);
-        
-        assert!(q_func_eval == w_eval);
+        let w_eval = w.evaluate(&w_eval_points);
 
+        assert!(q_func_eval == w_eval);
     }
 }

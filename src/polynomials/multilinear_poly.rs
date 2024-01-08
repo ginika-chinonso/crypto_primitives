@@ -171,29 +171,11 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
         self.terms.len() == 0
     }
 
-    // Evaluates the sum over the boolean hypercube and returns the sum
-    pub fn sum_over_the_boolean_hypercube(&self) -> F {
-        let mut res = F::zero();
-        if self.terms.len() == 0 {
-            return F::zero();
-        };
-        let vars_len = self.terms[0].vars.len();
-        for i in 0..2_usize.pow(vars_len as u32) {
-            let boolean_vec: Vec<F> = get_binary_string(i, vars_len)
-                .chars()
-                .into_iter()
-                .map(|var| if var == '0' { F::zero() } else { F::one() })
-                .collect();
-            let eval_domain = boolean_vec.into_iter().enumerate().collect();
-            res += self.evaluate(eval_domain);
-        }
-        res
-    }
-
     // Interpolate a polynomial using the boolean hypercube
     pub fn interpolate(y: Vec<F>) -> Self {
         let mut res = MultilinearPolynomial::new(vec![]);
-        let max_bit_count = (y.len() as f64).log2().ceil() as usize;
+        // let max_bit_count = (y.len() as f64).log2().ceil() as usize;
+        let max_bit_count = format!("{:b}", y.len() - 1).len();
         for i in 0..y.len() {
             let mut y_multi_lin_poly =
                 MultilinearPolynomial::new(vec![MultilinearMonomial::new(y[i], vec![])]);
@@ -211,7 +193,6 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
             }
             res = res.add(y_multi_lin_poly);
         }
-
         res
     }
 }
@@ -244,19 +225,20 @@ impl<F: PrimeField> Mul for MultilinearPolynomial<F> {
 }
 
 pub trait MultilinearPolynomialTrait<F: PrimeField> {
-    fn partial_eval(&self, x: Vec<(usize, F)>) -> Self;
-    fn evaluate(&self, x: Vec<(usize, F)>) -> F;
+    fn partial_eval(&self, x: &Vec<(usize, F)>) -> Self;
+    fn evaluate(&self, x: &Vec<(usize, F)>) -> F;
     fn number_of_vars(&self) -> usize;
     fn to_bytes(&self) -> Vec<u8>;
     fn relabel(&self) -> Self;
     fn additive_identity() -> Self;
+    fn sum_over_the_boolean_hypercube(&self) -> F;
 }
 
 impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
     // Partially evaluate a multilinear polynomial
     // tuple comprise of variable index which is equivalent to the variable
     // and Field element which is the point to evaluate at
-    fn partial_eval(&self, x: Vec<(usize, F)>) -> Self {
+    fn partial_eval(&self, x: &Vec<(usize, F)>) -> Self {
         let mut res = self.clone();
         for i in 0..res.terms.len() {
             for j in 0..x.len() {
@@ -301,18 +283,23 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
     }
 
     // Fully evaluates a multilinear polynomial
-    fn evaluate(&self, x: Vec<(usize, F)>) -> F {
+    fn evaluate(&self, x: &Vec<(usize, F)>) -> F {
         let mut res = self.clone();
         if res.is_zero() {
             return F::zero();
         }
+
+        // dbg!(&self.number_of_vars());
+        // dbg!(&x.len());
+
         assert!(
-            self.number_of_vars() == x.len(),
+            x.len() >= self.number_of_vars(),
             "Must evaluate at all points"
         );
 
+
         for i in 0..res.terms.len() {
-            for j in 0..x.len() {
+            for j in 0..self.number_of_vars() {
                 let (var, val) = x[j];
                 assert!(var <= self.terms[0].vars.len(), "Variable not found");
                 if res.terms[i].vars[var] {
@@ -329,6 +316,9 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
     }
 
     fn number_of_vars(&self) -> usize {
+        if self.terms.len() == 0 {
+            return 0;
+        }
         self.terms[0].vars.len()
     }
 
@@ -349,6 +339,25 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
 
     fn additive_identity() -> Self {
         MultilinearPolynomial::new(vec![])
+    }
+
+    // Evaluates the sum over the boolean hypercube and returns the sum
+    fn sum_over_the_boolean_hypercube(&self) -> F {
+        let mut res = F::zero();
+        if self.terms.len() == 0 {
+            return F::zero();
+        };
+        let vars_len = self.terms[0].vars.len();
+        for i in 0..2_usize.pow(vars_len as u32) {
+            let boolean_vec: Vec<F> = get_binary_string(i, vars_len)
+                .chars()
+                .into_iter()
+                .map(|var| if var == '0' { F::zero() } else { F::one() })
+                .collect();
+            let eval_domain = boolean_vec.into_iter().enumerate().collect();
+            res += self.evaluate(&eval_domain);
+        }
+        res
     }
 }
 
@@ -438,7 +447,7 @@ mod tests {
         let term2 = MultilinearMonomial::new(Fq::from(8), vec![false, true, true]); // 8bc
         let multi_lin_poly = MultilinearPolynomial::new(vec![term1, term2]); // 3ab + 8bc
 
-        let res = MultilinearPolynomialTrait::partial_eval(&multi_lin_poly, vec![(1, Fq::from(3))]); // evaluating at b = 3
+        let res = MultilinearPolynomialTrait::partial_eval(&multi_lin_poly, &vec![(1, Fq::from(3))]); // evaluating at b = 3
         assert_eq!(
             res,
             MultilinearPolynomial::new(vec![
@@ -454,7 +463,7 @@ mod tests {
         let term2 = MultilinearMonomial::new(Fq::from(8), vec![false, true, true]); // 8bc
         let multi_lin_poly = MultilinearPolynomial::new(vec![term1, term2]); // 3ab + 8bc
 
-        let res = multi_lin_poly.partial_eval(vec![(1, Fq::from(3)), (2, Fq::from(2))]); // evaluating at b = 3 and c = 2
+        let res = multi_lin_poly.partial_eval(&vec![(1, Fq::from(3)), (2, Fq::from(2))]); // evaluating at b = 3 and c = 2
         assert_eq!(
             res,
             MultilinearPolynomial::new(vec![
@@ -473,7 +482,7 @@ mod tests {
         let multi_lin_poly = MultilinearPolynomial::new(vec![term1, term2]); // 3ab + 8bc
 
         let res =
-            multi_lin_poly.evaluate(vec![(0, Fq::from(2)), (1, Fq::from(3)), (2, Fq::from(2))]); // evaluating at a = 2, b = 3 and c = 2
+            multi_lin_poly.evaluate(&vec![(0, Fq::from(2)), (1, Fq::from(3)), (2, Fq::from(2))]); // evaluating at a = 2, b = 3 and c = 2
         assert_eq!(res, Fq::from(66)); // Res = 18 + 48
     }
 
@@ -586,31 +595,31 @@ mod tests {
         assert!(
             res_poly
                 .clone()
-                .evaluate(vec![(0, Fq::from(0)), (1, Fq::from(0)), (2, Fq::from(0))])
+                .evaluate(&vec![(0, Fq::from(0)), (1, Fq::from(0)), (2, Fq::from(0))])
                 == Fq::from(2)
         );
         assert!(
             res_poly
                 .clone()
-                .evaluate(vec![(0, Fq::from(0)), (1, Fq::from(0)), (2, Fq::from(1))])
+                .evaluate(&vec![(0, Fq::from(0)), (1, Fq::from(0)), (2, Fq::from(1))])
                 == Fq::from(4)
         );
         assert!(
             res_poly
                 .clone()
-                .evaluate(vec![(0, Fq::from(0)), (1, Fq::from(1)), (2, Fq::from(0))])
+                .evaluate(&vec![(0, Fq::from(0)), (1, Fq::from(1)), (2, Fq::from(0))])
                 == Fq::from(6)
         );
         assert!(
             res_poly
                 .clone()
-                .evaluate(vec![(0, Fq::from(0)), (1, Fq::from(1)), (2, Fq::from(1))])
+                .evaluate(&vec![(0, Fq::from(0)), (1, Fq::from(1)), (2, Fq::from(1))])
                 == Fq::from(8)
         );
         assert!(
             res_poly
                 .clone()
-                .evaluate(vec![(0, Fq::from(1)), (1, Fq::from(0)), (2, Fq::from(0))])
+                .evaluate(&vec![(0, Fq::from(1)), (1, Fq::from(0)), (2, Fq::from(0))])
                 == Fq::from(10)
         );
     }

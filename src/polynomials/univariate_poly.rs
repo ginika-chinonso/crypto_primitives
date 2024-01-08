@@ -90,13 +90,16 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
     }
 
     pub fn additive_identity() -> Self {
-        Self { coefficients: vec![] }
+        Self {
+            coefficients: vec![],
+        }
     }
 
     pub fn multiplicative_identity() -> Self {
-        Self { coefficients: vec![F::one()] }
+        Self {
+            coefficients: vec![F::one()],
+        }
     }
-
 }
 
 // Implement native multiplication for univariate polynomial
