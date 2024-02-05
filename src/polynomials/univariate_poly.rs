@@ -177,7 +177,6 @@ impl<F: PrimeField> Add for UnivariatePolynomial<F> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-
         if self.is_zero() {
             return rhs.clone();
         }

@@ -55,10 +55,9 @@ impl Transcript {
     }
 
     pub fn sample_n_field_elements<F: PrimeField>(&mut self, n: usize) -> Vec<F> {
-
         let mut res = vec![];
 
-        for _ in 0..n{
+        for _ in 0..n {
             let r_i = self.sample_field_element();
             res.push(r_i);
         }

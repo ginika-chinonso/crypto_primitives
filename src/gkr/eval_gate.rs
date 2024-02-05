@@ -1,12 +1,15 @@
-use std::{ops::Add, fmt::Debug};
+use std::{fmt::Debug, ops::Add};
 
 use ark_ff::{BigInteger, PrimeField};
 use ark_std::iterable::Iterable;
 
-use crate::{polynomials::multilinear_poly::{MultilinearPolynomial, MultilinearPolynomialTrait}, utils::get_binary_string};
+use crate::{
+    polynomials::multilinear_poly::{MultilinearPolynomial, MultilinearPolynomialTrait},
+    utils::get_binary_string,
+};
 
 /// Evalgate is eqivalent to f(b, c)
-/// f(b, c) = add_i(a, b, c)(w_mle(b) + w_mle(c)) + add_i(a, b, c)(w_mle(b) + w_mle(c))
+/// f(b, c) = add_i(a, b, c)(w_mle(b) + w_mle(c)) + add_i(a, b, c)(w_mle(b) * w_mle(c))
 #[derive(Debug, Clone)]
 pub struct EvalGate<F: PrimeField> {
     pub r: Vec<F>,
@@ -34,11 +37,8 @@ impl<F: PrimeField> EvalGate<F> {
     }
 }
 
-impl<F: PrimeField> MultilinearPolynomialTrait<F>
-    for EvalGate<F>
-{
+impl<F: PrimeField> MultilinearPolynomialTrait<F> for EvalGate<F> {
     fn partial_eval(&self, x: &Vec<(usize, F)>) -> EvalGate<F> {
-        
         // dbg!(&x.len());
 
         let bnc = x.iter().fold(vec![vec![]; 2], |mut acc, (index, ele)| {
@@ -52,9 +52,11 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
         });
 
         let b_eval_points = bnc[0].clone();
-        let c_eval_points = bnc[1].clone().into_iter().map(|(index, coeff)| {
-            (index - self.w_b_num_of_vars(), coeff)
-        }).collect();
+        let c_eval_points = bnc[1]
+            .clone()
+            .into_iter()
+            .map(|(index, coeff)| (index - self.w_b_num_of_vars(), coeff))
+            .collect();
 
         // let bnc = x.iter().fold(vec![vec![]; 2], |mut acc, (index, ele)| {
         //     if *index < self.w_b_num_of_vars() {
@@ -82,39 +84,54 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
         //     bnc[1].clone().into_iter().enumerate().collect()
         // };
 
-
         // dbg!(&b_eval_points);
         // dbg!(&c_eval_points);
         // dbg!(&x);
         // dbg!(&self.mul_i_mle[0]);
 
-        let eval_domain = x.clone().into_iter().map(|(index, point)|{
-            (self.r.len() + index, point)
-        }).collect();
+        let eval_domain = x
+            .clone()
+            .into_iter()
+            .map(|(index, point)| (self.r.len() + index, point))
+            .collect();
 
-        
-        let w_b_mle = self.w_b_mle.clone().into_iter().fold(vec![], |mut acc, poly| {
-            acc.push(poly.partial_eval(&b_eval_points));
-            acc
-        });
-        let w_c_mle = self.w_c_mle.clone().into_iter().fold(vec![], |mut acc, poly| {
-            acc.push(poly.partial_eval(&c_eval_points));
-            acc
-        });
-        
-        let add_i_mle = self.add_i_mle.clone().into_iter().fold(vec![], |mut acc, poly|{
-            acc.push(poly.partial_eval(&eval_domain).relabel());
-            acc
-        });
-        
-        let mul_i_mle = self.mul_i_mle.clone().into_iter().fold(vec![], |mut acc, poly|{
-            acc.push(poly.partial_eval(&eval_domain).relabel());
-            acc
-        });
+        let w_b_mle = self
+            .w_b_mle
+            .clone()
+            .into_iter()
+            .fold(vec![], |mut acc, poly| {
+                acc.push(poly.partial_eval(&b_eval_points));
+                acc
+            });
+        let w_c_mle = self
+            .w_c_mle
+            .clone()
+            .into_iter()
+            .fold(vec![], |mut acc, poly| {
+                acc.push(poly.partial_eval(&c_eval_points));
+                acc
+            });
+
+        let add_i_mle = self
+            .add_i_mle
+            .clone()
+            .into_iter()
+            .fold(vec![], |mut acc, poly| {
+                acc.push(poly.partial_eval(&eval_domain).relabel());
+                acc
+            });
+
+        let mul_i_mle = self
+            .mul_i_mle
+            .clone()
+            .into_iter()
+            .fold(vec![], |mut acc, poly| {
+                acc.push(poly.partial_eval(&eval_domain).relabel());
+                acc
+            });
 
         // dbg!(&eval_domain.len());
 
-        
         // dbg!(&mul_i_mle[0].number_of_vars());
 
         EvalGate::new(&self.r.clone(), &add_i_mle, &mul_i_mle, &w_b_mle, &w_c_mle)
@@ -130,18 +147,17 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
         eval_domain.extend(c);
 
         eval_domain = eval_domain
-        .into_iter()
-        .fold(vec![], |mut acc, (_, ele)| {
-            acc.push(ele);
-            acc
-        })
-        .into_iter()
-        .enumerate()
-        .collect();
+            .into_iter()
+            .fold(vec![], |mut acc, (_, ele)| {
+                acc.push(ele);
+                acc
+            })
+            .into_iter()
+            .enumerate()
+            .collect();
 
-    
-    let b_eval_points = b
-    .iter()
+        let b_eval_points = b
+            .iter()
             .fold(vec![], |mut acc, (_, ele)| {
                 acc.push(*ele);
                 acc
@@ -149,7 +165,7 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
             .into_iter()
             .enumerate()
             .collect();
-        
+
         let c_eval_points = c
             .iter()
             .fold(vec![], |mut acc, (_, ele)| {
@@ -159,15 +175,14 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
             .into_iter()
             .enumerate()
             .collect();
-        
-            let mut res = F::zero();
-            
-            for i in 0..self.w_b_mle.len() {
 
-                // dbg!(&self.w_c_mle[i].number_of_vars());
-                // dbg!(&c_eval_points);
+        let mut res = F::zero();
 
-                let b_eval = self.w_b_mle[i].evaluate(&b_eval_points);
+        for i in 0..self.w_b_mle.len() {
+            // dbg!(&self.w_c_mle[i].number_of_vars());
+            // dbg!(&c_eval_points);
+
+            let b_eval = self.w_b_mle[i].evaluate(&b_eval_points);
             let c_eval = self.w_c_mle[i].evaluate(&c_eval_points);
 
             // dbg!(&self.add_i_mle[i].number_of_vars());
@@ -177,18 +192,14 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
             // dbg!(&self.w_c_mle[i].number_of_vars());
             // dbg!(&eval_domain.len());
 
-
-
             let add_result = self.add_i_mle[i].evaluate(&eval_domain) * (b_eval + c_eval);
             let mul_result = self.mul_i_mle[i].evaluate(&eval_domain) * (b_eval * c_eval);
 
             res += add_result + mul_result;
         }
 
-        res   
-
+        res
     }
-
 
     fn number_of_vars(&self) -> usize {
         self.w_b_num_of_vars() + self.w_c_num_of_vars()
@@ -200,12 +211,12 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
             acc
         });
 
-        let res = self.add_i_mle.iter().fold(res, |mut res, poly|{
+        let res = self.add_i_mle.iter().fold(res, |mut res, poly| {
             res.extend(poly.to_bytes());
             res
         });
 
-        let res = self.mul_i_mle.iter().fold(res, |mut res, poly|{
+        let res = self.mul_i_mle.iter().fold(res, |mut res, poly| {
             res.extend(poly.to_bytes());
             res
         });
@@ -215,7 +226,7 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
             res
         });
 
-        let res = self.w_c_mle.iter().fold(res, |mut res, poly|{
+        let res = self.w_c_mle.iter().fold(res, |mut res, poly| {
             res.extend(poly.to_bytes());
             res
         });
@@ -224,26 +235,41 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
     }
 
     fn relabel(&self) -> Self {
+        let new_add_i_mle = self
+            .add_i_mle
+            .clone()
+            .into_iter()
+            .fold(vec![], |mut acc, poly| {
+                acc.push(poly.relabel());
+                acc
+            });
 
-        let new_add_i_mle = self.add_i_mle.clone().into_iter().fold(vec![], |mut acc, poly| {
-            acc.push(poly.relabel());
-            acc
-        });
+        let new_mul_i_mle = self
+            .mul_i_mle
+            .clone()
+            .into_iter()
+            .fold(vec![], |mut acc, poly| {
+                acc.push(poly.relabel());
+                acc
+            });
 
-        let new_mul_i_mle = self.mul_i_mle.clone().into_iter().fold(vec![], |mut acc, poly| {
-            acc.push(poly.relabel());
-            acc
-        });
+        let new_w_b_mle = self
+            .w_b_mle
+            .clone()
+            .into_iter()
+            .fold(vec![], |mut acc, poly| {
+                acc.push(poly.relabel());
+                acc
+            });
 
-        let new_w_b_mle = self.w_b_mle.clone().into_iter().fold(vec![], |mut acc, poly| {
-            acc.push(poly.relabel());
-            acc
-        });
-
-        let new_w_c_mle = self.w_c_mle.clone().into_iter().fold(vec![], |mut acc, poly| {
-            acc.push(poly.relabel());
-            acc
-        });
+        let new_w_c_mle = self
+            .w_c_mle
+            .clone()
+            .into_iter()
+            .fold(vec![], |mut acc, poly| {
+                acc.push(poly.relabel());
+                acc
+            });
 
         Self {
             r: self.r.clone(),
@@ -285,30 +311,28 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F>
     }
 }
 
-
-impl <F: PrimeField>EvalGate<F> {
-
+impl<F: PrimeField> EvalGate<F> {
     fn w_b_num_of_vars(&self) -> usize {
-        self.w_b_mle.first().map(|val| val.number_of_vars()).unwrap_or(0)
+        self.w_b_mle
+            .first()
+            .map(|val| val.number_of_vars())
+            .unwrap_or(0)
     }
 
     fn w_c_num_of_vars(&self) -> usize {
-        self.w_c_mle.first().map(|val| val.number_of_vars()).unwrap_or(0)
+        self.w_c_mle
+            .first()
+            .map(|val| val.number_of_vars())
+            .unwrap_or(0)
     }
 }
 
 // Implement native addition for Evalgate
-impl<F: PrimeField> Add
-    for EvalGate<F>
-{
+impl<F: PrimeField> Add for EvalGate<F> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self {
-        let r = if self.r.is_empty() {
-            rhs.r
-        } else {
-            self.r
-        };
+        let r = if self.r.is_empty() { rhs.r } else { self.r };
 
         let mut new_add_i_mle = self.add_i_mle.clone();
         new_add_i_mle.extend(rhs.add_i_mle);
@@ -381,7 +405,13 @@ mod test {
         let r = vec![Fq::from(0), Fq::from(1)];
         let w_mle = MultilinearPolynomial::<Fq>::interpolate(circuit_eval[3].clone());
 
-        let eval_gate = EvalGate::new(&r, &vec![layer_2_mle[0].clone()], &vec![layer_2_mle[1].clone()], &vec![w_mle.clone()], &vec![w_mle]);
+        let eval_gate = EvalGate::new(
+            &r,
+            &vec![layer_2_mle[0].clone()],
+            &vec![layer_2_mle[1].clone()],
+            &vec![w_mle.clone()],
+            &vec![w_mle],
+        );
 
         let b = vec![Fq::from(0), Fq::from(1), Fq::from(0)];
         let c = vec![Fq::from(0), Fq::from(1), Fq::from(1)];
@@ -389,16 +419,26 @@ mod test {
         let mut eval_points = b;
         eval_points.extend(c);
 
-        let eval_tup = eval_points.into_iter().enumerate().map(|(index, point)| (index + r.len(), point)).collect();
+        let eval_tup = eval_points
+            .into_iter()
+            .enumerate()
+            .map(|(index, point)| (index + r.len(), point))
+            .collect();
 
         let res = eval_gate.evaluate(&eval_tup);
         assert!(res == Fq::from(12));
 
-        // Test add gate        
+        // Test add gate
         let r = vec![Fq::from(0), Fq::from(0)];
 
         let w_mle = MultilinearPolynomial::<Fq>::interpolate(circuit_eval[3].clone());
-        let eval_gate = EvalGate::new(&r, &vec![layer_2_mle[0].clone()], &vec![layer_2_mle[1].clone()], &vec![w_mle.clone()], &vec![w_mle]);
+        let eval_gate = EvalGate::new(
+            &r,
+            &vec![layer_2_mle[0].clone()],
+            &vec![layer_2_mle[1].clone()],
+            &vec![w_mle.clone()],
+            &vec![w_mle],
+        );
 
         let b = vec![Fq::from(0), Fq::from(0), Fq::from(0)];
         let c = vec![Fq::from(0), Fq::from(0), Fq::from(1)];
@@ -406,7 +446,11 @@ mod test {
         let mut eval_points = b;
         eval_points.extend(c);
 
-        let eval_tup = eval_points.into_iter().enumerate().map(|(index, point)| (index + r.len(), point)).collect();
+        let eval_tup = eval_points
+            .into_iter()
+            .enumerate()
+            .map(|(index, point)| (index + r.len(), point))
+            .collect();
 
         let res = eval_gate.evaluate(&eval_tup);
         assert!(res == Fq::from(7));
@@ -426,15 +470,21 @@ mod test {
         ]);
 
         let [add_i_mle, mul_i_mle] = circuit.layer_mle(2);
-        
+
         // dbg!(&add_i_mle.number_of_vars());
         // dbg!(&circuit_eval[3]);
         // dbg!(&mul_i_mle);
-        
+
         let r = vec![Fq::from(0), Fq::from(1)];
         let w_mle = MultilinearPolynomial::<Fq>::interpolate(circuit_eval[3].clone());
-        
-        let eval_gate = EvalGate::new(&r, &vec![add_i_mle], &vec![mul_i_mle], &vec![w_mle.clone()], &vec![w_mle.clone()]);
+
+        let eval_gate = EvalGate::new(
+            &r,
+            &vec![add_i_mle],
+            &vec![mul_i_mle],
+            &vec![w_mle.clone()],
+            &vec![w_mle.clone()],
+        );
 
         let b = vec![Fq::from(0), Fq::from(1), Fq::from(0)];
         let c = vec![Fq::from(0), Fq::from(1), Fq::from(1)];
@@ -454,13 +504,10 @@ mod test {
         // dbg!(w_mle.number_of_vars());
         // dbg!(&partial_res.number_of_vars());
 
-        let res = partial_res
-            .relabel()
-            .evaluate(&vec![]);
+        let res = partial_res.relabel().evaluate(&vec![]);
 
-            // dbg!(&res);
+        // dbg!(&res);
 
         assert!(res == Fq::from(12));
     }
-
 }

@@ -1,0 +1,16 @@
+1,1,2,main.out
+2,2,2,main.x
+3,3,2,main.a
+4,4,2,main.b
+5,5,2,main.c
+6,6,2,main.res
+7,7,2,main.x_squared
+8,8,2,main.first_term
+9,9,2,main.second_term
+10,10,2,main.partial_sum
+11,11,1,main.equal.out
+12,12,1,main.equal.in[0]
+13,13,1,main.equal.in[1]
+14,14,0,main.equal.isz.out
+15,15,0,main.equal.isz.in
+16,16,0,main.equal.isz.inv

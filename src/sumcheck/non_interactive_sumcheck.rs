@@ -72,8 +72,6 @@ impl Sumcheck {
 
         proof.challenges.extend(challenges);
 
-        // dbg!(&proof.challenges);
-
         proof
     }
 
@@ -131,17 +129,9 @@ impl Sumcheck {
 
         for i in 0..proof.number_of_vars {
 
-            // dbg!(&proof.rounds_poly[i].number_of_vars());
-            // dbg!(&proof.rounds_poly[i]);
-
-
             let verifier_check = proof.rounds_poly[i].evaluate(&vec![(0, F::zero())])
                 + proof.rounds_poly[i].evaluate(&vec![(0, F::one())]);
 
-
-                // dbg!(&i);
-                // dbg!(&verifier_check);
-                // dbg!(&proof.sum);
             if verifier_check != proof.sum {
                 return Err("Invalid proof".to_string());
             };
@@ -152,7 +142,6 @@ impl Sumcheck {
             let (_, challenge) = challenges[i];
 
             proof.sum = proof.rounds_poly[i].evaluate(&vec![(0, challenge)]);
-
         }
         // dbg!(&challenges);
         Ok((challenges, proof.sum))

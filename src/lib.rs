@@ -1,3 +1,4 @@
+pub mod circom_gkr;
 pub mod elliptic_curves;
 pub mod fiat_shamir_transcript;
 pub mod fields;

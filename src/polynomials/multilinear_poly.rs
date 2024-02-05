@@ -297,7 +297,6 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
             "Must evaluate at all points"
         );
 
-
         for i in 0..res.terms.len() {
             for j in 0..self.number_of_vars() {
                 let (var, val) = x[j];
@@ -447,7 +446,8 @@ mod tests {
         let term2 = MultilinearMonomial::new(Fq::from(8), vec![false, true, true]); // 8bc
         let multi_lin_poly = MultilinearPolynomial::new(vec![term1, term2]); // 3ab + 8bc
 
-        let res = MultilinearPolynomialTrait::partial_eval(&multi_lin_poly, &vec![(1, Fq::from(3))]); // evaluating at b = 3
+        let res =
+            MultilinearPolynomialTrait::partial_eval(&multi_lin_poly, &vec![(1, Fq::from(3))]); // evaluating at b = 3
         assert_eq!(
             res,
             MultilinearPolynomial::new(vec![

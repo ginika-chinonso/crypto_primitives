@@ -17,7 +17,7 @@ pub fn l_function<F: PrimeField>(b: &[F], c: &[F]) -> Vec<UnivariatePolynomial<F
         .collect()
 }
 
-pub fn eval_l<F: PrimeField>(l: &[UnivariatePolynomial<F>], r: F) -> Vec<F>{
+pub fn eval_l<F: PrimeField>(l: &[UnivariatePolynomial<F>], r: F) -> Vec<F> {
     l.iter().map(|poly| poly.evaluate(r)).collect()
 }
 
@@ -35,7 +35,6 @@ pub fn q_function<F: PrimeField>(
 
     let mut res = UnivariatePolynomial::additive_identity();
 
-    
     for term in &w.terms {
         let mut coeff = UnivariatePolynomial::new(vec![term.coefficient]);
         for i in 0..term.vars.len() {
@@ -57,12 +56,15 @@ pub fn q_function<F: PrimeField>(
 #[cfg(test)]
 mod test {
 
-    use crate::{polynomials::{
-        multilinear_poly::{
-            MultilinearMonomial, MultilinearPolynomial, MultilinearPolynomialTrait,
+    use crate::{
+        gkr::utils::eval_l,
+        polynomials::{
+            multilinear_poly::{
+                MultilinearMonomial, MultilinearPolynomial, MultilinearPolynomialTrait,
+            },
+            univariate_poly::UnivariatePolynomial,
         },
-        univariate_poly::UnivariatePolynomial,
-    }, gkr::utils::eval_l};
+    };
     use ark_ff::{Fp64, MontBackend, MontConfig};
 
     use super::{l_function, q_function};
