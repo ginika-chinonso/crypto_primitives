@@ -1,1 +1,1 @@
-pub mod arithmetics;
+pub mod short_weierstrass;

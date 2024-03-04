@@ -17,7 +17,6 @@ pub enum Op {
 }
 
 impl<F: PrimeField> Constraint<F> {
-
     pub fn new_with_op(
         a: &Vec<(usize, F)>,
         b: &Vec<(usize, F)>,
@@ -153,7 +152,6 @@ impl<F: PrimeField> Constraint<F> {
             self.op = new_self.op;
         }
     }
-
 }
 
 #[cfg(test)]

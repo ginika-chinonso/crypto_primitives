@@ -39,15 +39,10 @@ pub fn q_function<F: PrimeField>(
         let mut coeff = UnivariatePolynomial::new(vec![term.coefficient]);
         for i in 0..term.vars.len() {
             if term.vars[i] {
-                println!("Q func check ");
                 coeff = coeff.clone() * l[i].clone();
-                println!("After Q func check ");
             }
         }
-        dbg!(&res);
-        dbg!(&coeff);
         res = res + coeff;
-        println!("After for loop");
     }
 
     Ok(res)

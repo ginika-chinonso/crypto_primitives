@@ -131,6 +131,11 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
 
     // Add like terms in a multilinear polynomial
     fn simplify(&self) -> MultilinearPolynomial<F> {
+
+        if self.is_zero() {
+            return MultilinearPolynomial::new(vec![MultilinearMonomial::new(F::zero(), vec![false])]);
+        }
+
         let mut terms_map = BTreeMap::<usize, (F, Vec<bool>)>::new();
 
         let mut res = MultilinearPolynomial::new(vec![]);
@@ -151,11 +156,18 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
             }
         }
         for (coeffs, var) in terms_map.values() {
-            res.terms.push(MultilinearMonomial {
-                coefficient: coeffs.clone(),
-                vars: var.clone(),
-            });
+            if *coeffs != F::zero() {
+                res.terms.push(MultilinearMonomial {
+                    coefficient: coeffs.clone(),
+                    vars: var.clone(),
+                });
+            }
         }
+
+        if res.is_zero() {
+            return MultilinearPolynomial::new(vec![MultilinearMonomial::new(F::zero(), self.terms[0].vars.clone())]);
+        }
+        
         res
     }
 
@@ -292,13 +304,22 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
         // dbg!(&self.number_of_vars());
         // dbg!(&x.len());
 
-        assert!(
-            x.len() >= self.number_of_vars(),
-            "Must evaluate at all points"
-        );
-
+        // assert!(
+        //     x.len() >= self.number_of_vars(),
+        //     "Must evaluate at all points"
+        // );
+        
         for i in 0..res.terms.len() {
             for j in 0..self.number_of_vars() {
+                // dbg!("{}, {}", &i, &j);
+                // dbg!(&res);
+                // dbg!(&x[j]);
+                // dbg!(&j);
+                // dbg!(self.number_of_vars());
+                
+                // i = term
+                // j = variable
+                // issue: trying to evaluate a term at a point that is not a variable
                 let (var, val) = x[j];
                 assert!(var <= self.terms[0].vars.len(), "Variable not found");
                 if res.terms[i].vars[var] {
@@ -307,6 +328,8 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
                 };
             }
         }
+        // dbg!(res.simplify().terms.len());
+        // dbg!(res.simplify().terms);
         assert!(
             res.simplify().terms.len() == 1,
             "All variables should be evaluated"

@@ -12,7 +12,7 @@ use crate::{
 
 use super::{circuit::Circuit, eval_gate::EvalGate};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct GKRProof<F: PrimeField> {
     pub sumcheck_proofs: Vec<SumcheckProof<F, EvalGate<F>>>,
     pub output: MultilinearPolynomial<F>,
@@ -39,25 +39,23 @@ impl GKR {
         let mut gkr_proof = GKRProof::<F>::new();
 
         let output_gate_w_mle = circuit.w_mle(circuit_eval[0].clone());
-
+        
         transcript.append(&output_gate_w_mle.to_bytes());
-
+        
         let mut r = transcript.sample_n_field_elements(output_gate_w_mle.number_of_vars());
-
+        
         let m_0_evalpoints = r.clone().into_iter().enumerate().collect();
-
+        
         let mut m = output_gate_w_mle.clone().evaluate(&m_0_evalpoints);
-
+        
         gkr_proof.output = output_gate_w_mle;
-
+        
         for i in 1..circuit_eval.len() {
-            dbg!(&i);
-            dbg!(&circuit_eval.len());
-
+            
             let [add_i_mle, mul_i_mle] = circuit.layer_mle(i - 1);
-
+            
             let layer_w_mle = circuit.w_mle(circuit_eval[i].clone());
-
+            
             let layer_eval_gate = EvalGate::new(
                 &r,
                 &vec![add_i_mle],
@@ -66,17 +64,19 @@ impl GKR {
                 &vec![layer_w_mle],
             );
 
-            let round_sumcheck_proof = Sumcheck::prove(&layer_eval_gate, &m);
-            // dbg!(&round_sumcheck_proof);
-            // dbg!(&m);
-
+            dbg!(&layer_eval_gate.number_of_vars());
+            
+            let mut round_sumcheck_proof = Sumcheck::prove(&layer_eval_gate, &m);
+            // if Sumcheck::verify_partial(&mut round_sumcheck_proof).is_err() {
+            //     dbg!(&layer_eval_gate);
+            // };
+            
             let (b, c) = round_sumcheck_proof
                 .challenges
                 .split_at(round_sumcheck_proof.challenges.len() / 2);
 
             let l = l_function(&b, &c);
             let q = q_function(&l, &circuit.w_mle(circuit_eval[i].clone())).unwrap();
-            println!("Mid point");
 
             transcript.append(round_sumcheck_proof.to_bytes().as_slice());
 
@@ -92,8 +92,6 @@ impl GKR {
 
             gkr_proof.q_funcs.push(q);
         }
-
-        println!("Done with proving");
 
         gkr_proof
     }
@@ -112,7 +110,6 @@ impl GKR {
         let mut m = proof
             .output
             .evaluate(&r.clone().into_iter().enumerate().collect());
-
         // To check the provers claim, the verifier applies the sumcheck protocol to the polynomial
         // f(b, c) = add_i(a, b, c)(w_mle(b) + w_mle(c)) + add_i(a, b, c)(w_mle(b) + w_mle(c))
 
@@ -120,42 +117,35 @@ impl GKR {
             transcript.append(proof.sumcheck_proofs[i].to_bytes().as_slice());
             transcript.add_univariate_poly(&proof.q_funcs[i]);
 
-            dbg!(&m);
-            dbg!(&proof.sumcheck_proofs[i].sum);
             if proof.sumcheck_proofs[i].sum != m {
                 return Ok(false);
             }
-
+            
+            // if Sumcheck::verify_partial(&mut proof.sumcheck_proofs[i].clone()).is_err() {
+            //     dbg!(&i);
+            // };
             let (challenges, round_sum) =
                 Sumcheck::verify_partial(&mut proof.sumcheck_proofs[i].clone())?;
-
-            let challenges: Vec<F> = challenges
+                let challenges: Vec<F> = challenges
                 .into_iter()
                 .map(|(_, challenge)| challenge)
                 .collect();
-
+            
             let [add_i_mle, mul_i_mle] = circuit.layer_mle::<F>(i);
 
             let mut rbc = r.clone();
-
+            
             rbc.extend(&challenges);
-
+            
             let w_b = proof.q_funcs[i].evaluate(F::zero());
-
+            
             let w_c = proof.q_funcs[i].evaluate(F::one());
-
+            
             let (b, c) = challenges.split_at(challenges.len() / 2);
 
-            // dbg!(&rbc);
             let rbc_eval_points: Vec<(usize, F)> = rbc.into_iter().enumerate().collect();
 
             let add_result = add_i_mle.evaluate(&rbc_eval_points) * (w_b + w_c);
-
-            // dbg!(&add_i_mle.number_of_vars());
-            // dbg!(&mul_i_mle.number_of_vars());
-            // dbg!(&b);
-            // dbg!(&c);
-            // dbg!(&challenges);
 
             let mul_result = mul_i_mle.evaluate(&rbc_eval_points) * (w_b * w_c);
 
@@ -216,6 +206,18 @@ mod test {
         new_circuit
     }
 
+        //                          0
+        //                          *
+        //                      /       \
+        //                 2mod(17)   0mod(17)
+        //                    +         *
+        //                 /     \   /      \
+        //                7       12      0mod(17)
+        //                +       *         +
+        //              /   \   /   \     /   \
+        //              5   2   3   4    9     8
+
+
     #[test]
     fn test_gkr_proof() {
         let circuit = create_circuit();
@@ -229,9 +231,9 @@ mod test {
             Fq::from(8),
         ];
 
+        
         let gkr_proof: GKRProof<Fq> = GKR::prove(circuit.clone(), circuit_input.clone());
-
-        // dbg!(&gkr_proof);
+        dbg!("Proving");
 
         let verifier = GKR::verify(circuit_input, gkr_proof, circuit).unwrap();
 
@@ -249,28 +251,32 @@ mod test {
             Fq::from(9),
             Fq::from(8),
         ];
+
         let circuit_eval = circuit.evaluate(circuit_input);
-        let [add_i, mul_i] = circuit.layer_mle(1);
-        let w_2 = circuit.w_mle(circuit_eval[2].clone());
+
+        let [add_i, mul_i] = circuit.layer_mle(2);
+
+        let w_3 = circuit.w_mle(circuit_eval[3].clone());
         let gate_ext = EvalGate::new(
-            &vec![Fq::from(0)],
+            &vec![Fq::from(0), Fq::from(1)],
             &vec![add_i],
             &vec![mul_i],
-            &vec![w_2.clone()],
-            &vec![w_2],
+            &vec![w_3.clone()],
+            &vec![w_3],
         );
-        dbg!(gate_ext.number_of_vars());
         assert_eq!(
-            Fq::from(2),
+            Fq::from(12),
             gate_ext.evaluate(&vec![
                 (0, Fq::from(0)),
-                (1, Fq::from(0)),
+                (1, Fq::from(1)),
                 (2, Fq::from(0)),
-                (3, Fq::from(1)),
+                (3, Fq::from(0)),
+                (4, Fq::from(1)),
+                (5, Fq::from(1)),
             ])
         );
 
-        let sumcheck_proof = Sumcheck::prove(&gate_ext, &Fq::from(2));
+        let sumcheck_proof = Sumcheck::prove(&gate_ext, &Fq::from(12));
         assert!(Sumcheck::verify(sumcheck_proof, gate_ext).unwrap());
     }
 }

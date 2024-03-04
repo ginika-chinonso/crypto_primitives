@@ -7,7 +7,7 @@ pub fn get_binary_string(index: usize, max_bit_count: usize) -> String {
         return "".to_string();
     }
     let binary = format!("{:b}", index);
-    "0".repeat(max_bit_count - binary.len()) + &binary
+    "0".repeat(max_bit_count.checked_sub(binary.len()).unwrap_or(0)) + &binary
 }
 
 // Returns the multilinear polynomial representing a bit value

@@ -110,7 +110,6 @@ impl Sumcheck {
     //         proof.rounds_poly.push(round_poly);
 
     //         challenges.push(transcript.sample_field_element());
-    //         dbg!(&challenges);
     //     }
 
     //     proof
@@ -128,10 +127,12 @@ impl Sumcheck {
         transcript.append(proof.sum.into_bigint().to_bytes_be().as_slice());
 
         for i in 0..proof.number_of_vars {
-
             let verifier_check = proof.rounds_poly[i].evaluate(&vec![(0, F::zero())])
                 + proof.rounds_poly[i].evaluate(&vec![(0, F::one())]);
 
+                // dbg!(&i);
+                // dbg!(&verifier_check);
+                // dbg!(&proof.sum);
             if verifier_check != proof.sum {
                 return Err("Invalid proof".to_string());
             };
@@ -143,7 +144,6 @@ impl Sumcheck {
 
             proof.sum = proof.rounds_poly[i].evaluate(&vec![(0, challenge)]);
         }
-        // dbg!(&challenges);
         Ok((challenges, proof.sum))
     }
 }

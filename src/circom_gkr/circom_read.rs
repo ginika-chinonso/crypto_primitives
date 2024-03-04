@@ -72,18 +72,18 @@ pub fn read_circom_constraint<F: PrimeField + Debug>(path: String) -> Constraint
 
         let new_constraint = if a.is_empty() || b.is_empty() {
             Constraint {
-                    a,
-                    b,
-                    c,
-                    op: Op::ADD,
-                }
+                a,
+                b,
+                c,
+                op: Op::ADD,
+            }
         } else {
             Constraint {
-                    a,
-                    b,
-                    c,
-                    op: Op::MUL,
-                }
+                a,
+                b,
+                c,
+                op: Op::MUL,
+            }
         };
         res.push(new_constraint);
     }

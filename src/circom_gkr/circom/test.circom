@@ -9,21 +9,21 @@
 
 
 
-// pragma circom 2.1.6;
+pragma circom 2.1.6;
 
-// template test() {
-//     signal input a;
-//     signal input b;
-//     signal input c;
-//     signal input x;
+template test() {
+    signal input a;
+    signal input b;
+    signal input c;
+    signal input x;
 
-//     signal w <== x * x;
-//     signal y <== a * w;
-//     signal z <== b * x;
-//     signal n <== y + z + c;
-// }
+    signal w <== x * x;
+    signal y <== a * w;
+    signal z <== b * x;
+    signal n <== y + z + c;
+}
 
-// component main{public[a]} = test();
+component main{public[a]} = test();
 
 // -4 * 4 = -5 ==> -x * x = -w
 // -1 * 5 = -6 ==> -a * w = -y
@@ -42,6 +42,23 @@
 
 
 
+// template test() {
+//     signal input a;
+//     signal input b;
+//     signal output c;
+
+//     c <== a * b;
+// }
+
+// component main{public[a]} = test();
+
+
+
+
+
+
+
+
 
 
 
@@ -76,22 +93,30 @@
 
 
 // template test() {
-//     signal input a;
-//     signal input b;
-//     signal input c;
-//     signal input x;
+//     signal input a; //5
+//     signal input b; //3
+//     signal input c; // 2
+//     signal input x; //9
 
 //     signal w <== a + b;
-//     signal j <== c + x;
+//     signal j <== c + x + 6;
 //     signal res <== w * j + 9;
 // }
 
 // component main{public[a]} = test();
 
 // 5 - 2 = 1 ==> w - b = a
-// 6 - 4 = 3 ==> j - x = c
-// -5 * 6 = 8 ==> -w * j = newvar
-// -7 + 0 = 8 ==> -res + const(9) = newvar
+// 6 - 4 = 8 ==> j - x = newvar1
+// -5 * 6 = 9 ==> -w * j = newvar2
+// 3 + const(6) = 8 ==> c + const(6) = newvar1
+// -7 + const(9) = 9 ==> -res + const(9) = newvar2
+
+// constants
+// -1 => 10
+// 6 => 12
+// 1 => 0
+// 0 => 11
+// 9 => 13
 
 
 
@@ -125,35 +150,35 @@
 
 
 
-pragma circom 2.1.6;
+// pragma circom 2.1.6;
 
-include "./node_modules/circomlib/circuits/comparators.circom";
+// include "./node_modules/circomlib/circuits/comparators.circom";
 
-// Create a Quadratic Equation( ax^2 + bx + c ) verifier using the below data.
-// Use comparators.circom lib to compare results if equal
+// // Create a Quadratic Equation( ax^2 + bx + c ) verifier using the below data.
+// // Use comparators.circom lib to compare results if equal
 
-template QuadraticEquation() {
-    signal input x;     // x value
-    signal input a;     // coeffecient of x^2
-    signal input b;     // coeffecient of x 
-    signal input c;     // constant c in equation
-    signal input res;   // Expected result of the equation
-    signal output out;  // If res is correct , then return 1 , else 0 . 
+// template QuadraticEquation() {
+//     signal input x;     // x value
+//     signal input a;     // coeffecient of x^2
+//     signal input b;     // coeffecient of x 
+//     signal input c;     // constant c in equation
+//     signal input res;   // Expected result of the equation
+//     signal output out;  // If res is correct , then return 1 , else 0 . 
 
-    // your code here
-    signal x_squared <== x * x;
-    signal first_term <== a * x_squared;
-    signal second_term <== b * x;
-    signal partial_sum <== first_term + second_term;
+//     // your code here
+//     signal x_squared <== x * x;
+//     signal first_term <== a * x_squared;
+//     signal second_term <== b * x;
+//     signal partial_sum <== first_term + second_term;
 
-    component equal = IsEqual();
-    equal.in[0] <== partial_sum + c;
-    equal.in[1] <== res;
+//     component equal = IsEqual();
+//     equal.in[0] <== partial_sum + c;
+//     equal.in[1] <== res;
 
-    out <== equal.out;
-}
+//     out <== equal.out;
+// }
 
-component main  = QuadraticEquation();
+// component main  = QuadraticEquation();
 
 /* INPUT = {
     "x": "2",

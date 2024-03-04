@@ -5,6 +5,8 @@
 // - TODO: Implement sum over the boolean hypercube for multilinear poly
 // prevent the creation of an empty layer
 
+use std::cmp::max;
+
 use ark_ff::PrimeField;
 
 use crate::{
@@ -50,9 +52,9 @@ impl Circuit {
                 right,
             } in self.layers[depth - 1].add_gates.clone()
             {
-                assert!(output <= res[depth].len());
-                assert!(left <= res[depth].len());
-                assert!(right <= res[depth].len());
+                // assert!(output <= res[depth].len());
+                // assert!(left <= res[depth].len());
+                // assert!(right <= res[depth].len());
 
                 layer_eval[output] = res[depth][left] + res[depth][right];
             }
@@ -63,9 +65,10 @@ impl Circuit {
                 right,
             } in self.layers[depth - 1].mul_gates.clone()
             {
-                assert!(output <= res[depth].len());
-                assert!(left <= res[depth].len());
-                assert!(right <= res[depth].len());
+
+                // assert!(output <= res[depth].len());
+                // assert!(left <= res[depth].len());
+                // assert!(right <= res[depth].len());
 
                 layer_eval[output] = res[depth][left] * res[depth][right];
             }
@@ -80,12 +83,37 @@ impl Circuit {
     }
 
     pub fn layer_mle<F: PrimeField>(&self, layer: usize) -> [MultilinearPolynomial<F>; 2] {
-        // dbg!(&layer);
-        let layer_len = self.layers[layer].add_gates.len() + self.layers[layer].mul_gates.len();
-        // dbg!(&layer_len);
-        let add_i_mle = add_i_mle(&self.layers[layer].add_gates, layer_len);
-        let mul_i_mle = mul_i_mle(&self.layers[layer].mul_gates, layer_len);
+        // dbg!(&layer, &self.depth, self.layers[layer].add_gates.len() + self.layers[layer].mul_gates.len());
+
+        let layer_len = self.layers[layer].len();
+
+        let input_layer_len = self.layers[layer].max_input_index();
+        
+        let add_i_mle = self.add_i_mle(layer);
+        let mul_i_mle = self.mul_i_mle(layer);
         [add_i_mle, mul_i_mle]
+    }
+
+    pub fn add_i_mle<F: PrimeField>(&self, layer: usize) -> MultilinearPolynomial<F> {
+        let res = MultilinearPolynomial::new(vec![]);
+        let layer = &self.layers[layer];
+        let gates = layer.add_gates.to_vec();
+        let layer_len = layer.len();
+        let layer_input_len = layer.max_input_index() + 1;
+        gates.iter().fold(res, |res, i| {
+            res + selector_poly(i.output, i.left, i.right, layer_len, layer_input_len)
+        })
+    }
+    
+    pub fn mul_i_mle<F: PrimeField>(&self, layer: usize) -> MultilinearPolynomial<F> {
+        let res = MultilinearPolynomial::new(vec![]);
+        let layer = &self.layers[layer];
+        let gates = layer.mul_gates.to_vec();
+        let layer_len = layer.len();
+        let layer_input_len = layer.max_input_index() + 1;
+        gates.iter().fold(res, |res, i| {
+            res + selector_poly(i.output, i.left, i.right, layer_len, layer_input_len)
+        })
     }
 }
 
@@ -108,8 +136,8 @@ impl Wire {
 
 #[derive(Debug, Clone)]
 pub struct Layer {
-    add_gates: Vec<Wire>,
-    mul_gates: Vec<Wire>,
+    pub add_gates: Vec<Wire>,
+    pub mul_gates: Vec<Wire>,
 }
 
 impl Layer {
@@ -118,6 +146,24 @@ impl Layer {
             add_gates,
             mul_gates,
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.add_gates.len() + self.mul_gates.len()
+    }
+
+    pub fn max_input_index(&self) -> usize {
+        let mut max_index = 0;
+
+        for wire in &self.add_gates {
+            max_index = max(wire.left, max_index);
+            max_index = max(wire.right, max_index);
+        }
+        for wire in &self.mul_gates {
+            max_index = max(wire.left, max_index);
+            max_index = max(wire.right, max_index);
+        }
+        max_index
     }
 }
 
@@ -129,7 +175,9 @@ pub fn get_index_poly<F: PrimeField>(
     max_bit_count: usize,
 ) -> MultilinearPolynomial<F> {
     let mut res = MultilinearPolynomial::new(vec![MultilinearMonomial::new(F::one(), vec![])]);
-    let max_bit_count = format!("{:b}", max_bit_count - 1).len();
+
+    let max_bit_count = format!("{:b}", max_bit_count.checked_sub(1).unwrap_or_default()).len();
+    
     let binary = get_binary_string(index, max_bit_count);
     for j in 0..binary.len() {
         let i_char = binary.chars().nth(j).unwrap();
@@ -150,26 +198,19 @@ pub fn selector_poly<F: PrimeField>(
     b: usize,
     c: usize,
     layer_len: usize,
+    input_layer_len: usize,
 ) -> MultilinearPolynomial<F> {
     let a_poly = get_index_poly(a, layer_len);
-    let b_poly = get_index_poly(b, layer_len * 2);
-    let c_poly = get_index_poly(c, layer_len * 2);
+    let b_poly = get_index_poly(b, input_layer_len);
+    let c_poly = get_index_poly(c, input_layer_len);
 
+    // dbg!(&a, &layer_len);
+    // dbg!(&b, &input_layer_len);
+    // dbg!(&c, &input_layer_len);
+    // dbg!(&a_poly);
+    // dbg!(&b_poly);
+    // dbg!(&c_poly);
     a_poly * b_poly * c_poly
-}
-
-pub fn add_i_mle<F: PrimeField>(gates: &[Wire], layer_len: usize) -> MultilinearPolynomial<F> {
-    let res = MultilinearPolynomial::new(vec![]);
-    gates.iter().fold(res, |res, i| {
-        res + selector_poly(i.output, i.left, i.right, layer_len)
-    })
-}
-
-pub fn mul_i_mle<F: PrimeField>(gates: &[Wire], layer_len: usize) -> MultilinearPolynomial<F> {
-    let res = MultilinearPolynomial::new(vec![]);
-    gates.iter().fold(res, |res, i| {
-        res + selector_poly(i.output, i.left, i.right, layer_len)
-    })
 }
 
 #[cfg(test)]
@@ -212,7 +253,6 @@ mod test {
             Fq::from(9),
             Fq::from(8),
         ]);
-        dbg!(&circuit_eval);
 
         let expected_result = vec![
             vec![Fq::from(3876)],
@@ -233,7 +273,7 @@ mod test {
 
     #[test]
     fn test_selector_poly() {
-        let add_i_mle = selector_poly(1, 0, 1, 3);
+        let add_i_mle = selector_poly(1, 0, 1, 3, 6);
         let res: Fq = add_i_mle.sum_over_the_boolean_hypercube();
         assert!(res == Fq::from(1), "Incorrect result");
     }
@@ -243,7 +283,7 @@ mod test {
         let a = 5_usize;
         let b = 8_usize;
         let c = 9_usize;
-        let add_i_mle = selector_poly(a, b, c, 5);
+        let add_i_mle = selector_poly(a, b, c, 5, 10);
         let res: Fq = add_i_mle.sum_over_the_boolean_hypercube();
         assert!(res == Fq::from(1), "Incorrect result");
     }
