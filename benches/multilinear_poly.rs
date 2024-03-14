@@ -1,6 +1,6 @@
 use ark_poly::{DenseMultilinearExtension, MultilinearExtension};
 use criterion::{criterion_group, criterion_main, Criterion};
-use crypto_primitives::polynomials::multilinear_poly::{
+use polynomials::multilinear_polynomial::{
     MultilinearMonomial, MultilinearPolynomial, MultilinearPolynomialTrait,
 };
 

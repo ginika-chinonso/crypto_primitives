@@ -1,0 +1,14 @@
+[package]
+name = "gkr"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+polynomials = {path = "../polynomials"}
+fiat_shamir_transcript = {path = "../fiat_shamir_transcript"}
+utils = {path = "../utils"}
+ark-ff = "0.4.2"
+ark-std = "0.4.0"
+sumcheck = {path = "../sumcheck"}

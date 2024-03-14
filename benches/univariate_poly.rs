@@ -1,5 +1,5 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use crypto_primitives::polynomials::univariate_poly::UnivariatePolynomial;
+use polynomials::univariate_polynomial::UnivariatePolynomial;
 
 use std::vec;
 
