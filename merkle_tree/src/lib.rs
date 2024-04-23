@@ -26,12 +26,11 @@ pub trait Hasher {
 
 // }
 
-struct KeccakHasher(Keccak);
+pub struct KeccakHasher(Keccak);
 
 impl Hasher for KeccakHasher {
     fn new() -> Self {
         KeccakHasher(Keccak::new(SecurityLevel::SHA256, StateBitsWidth::F1600))
-        // Keccak::new(keccak_rust::SecurityLevel::SHA256, StateBitsWidth::F1600))
     }
 
     fn hash(&mut self, input: &[u8]) -> [u8; 32] {
@@ -113,13 +112,11 @@ impl MerkleTree {
         let mut current_index = index;
         res.push(self.tree[tree_depth - 1][get_sibling_index(current_index)]);
 
-        // this is incorrect. rectify
         for i in (1..tree_depth - 1).rev() {
 
             let parent_index = get_parent_index(current_index);
             let parent_sibling = get_sibling_index(parent_index);
             res.push(self.tree[i][parent_sibling]);
-            // res.push(self.tree[i - 1][get_parent_index(current_index)]);
             current_index = parent_index;
         }
         res.reverse();
