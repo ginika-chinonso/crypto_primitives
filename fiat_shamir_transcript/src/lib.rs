@@ -1,4 +1,5 @@
 use ark_ff::{BigInteger, PrimeField};
+use rand::Rng;
 use sha3::{Digest, Keccak256};
 
 use polynomials::{
@@ -63,5 +64,10 @@ impl Transcript {
         }
 
         res
+    }
+
+    pub fn sample_element_in_range_n(&self, n: u64) -> u64 {
+        let mut rng = rand::thread_rng();
+        rng.gen_range(0..n)
     }
 }
