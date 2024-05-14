@@ -35,8 +35,8 @@ fn univariate_poly_benchmark(c: &mut Criterion) {
     c.bench_function("interpolate poly", |b| {
         b.iter(|| {
             UnivariatePolynomial::interpolate(
-                poly1.coefficients.clone(),
-                poly2.coefficients.clone(),
+                &poly1.coefficients.clone(),
+                &poly2.coefficients.clone(),
             )
         })
     });

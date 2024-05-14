@@ -103,7 +103,7 @@ impl<C: Pairing, H: HashToField<C::ScalarField>> KZG<C, H> {
 
         let res = poly.evaluate(eval_point);
 
-        let (quotient, remainder) = poly / zeroifier;
+        let (quotient, _) = poly / zeroifier;
 
         let proof: C::G1 = quotient.coefficients.iter().enumerate().fold(
             C::G1::default(),
