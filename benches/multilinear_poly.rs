@@ -24,7 +24,7 @@ fn multilinear_poly_benchmark(c: &mut Criterion) {
         MultilinearMonomial::new(Fq::from(9), vec![true, false, true]),
     ]);
 
-    let poly3 = MultilinearPolynomial::<Fq>::interpolate(vec![
+    let poly3 = MultilinearPolynomial::<Fq>::interpolate(&vec![
         Fq::from(2),
         Fq::from(4),
         Fq::from(6),
@@ -49,7 +49,7 @@ fn multilinear_poly_benchmark(c: &mut Criterion) {
 
     c.bench_function("multilinear interpolate", |b| {
         b.iter(|| {
-            MultilinearPolynomial::<Fq>::interpolate(vec![
+            MultilinearPolynomial::<Fq>::interpolate(&vec![
                 Fq::from(2),
                 Fq::from(4),
                 Fq::from(6),

@@ -1,7 +1,8 @@
 use ark_ff::PrimeField;
 use std::{
     collections::HashMap,
-    ops::{Add, Mul},
+    fmt::Display,
+    ops::{Add, Div, Mul},
 };
 
 use crate::multilinear_polynomial::MultilinearPolynomial;
@@ -29,7 +30,7 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
     }
 
     // Interpolate polynomial given x and y values
-    pub fn interpolate(x_values: Vec<F>, y_values: Vec<F>) -> Self {
+    pub fn interpolate(x_values: &Vec<F>, y_values: &Vec<F>) -> Self {
         assert_eq!(x_values.len(), y_values.len());
         let mut res_poly = Self::new(vec![]);
         let mut cache = HashMap::<(usize, usize), F>::new();
@@ -61,7 +62,7 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
             }
             res_poly = res_poly + y_poly;
         }
-        res_poly
+        res_poly.truncate()
     }
 
     // Checks if polynomial is a zero polynomial
@@ -198,16 +199,77 @@ impl<F: PrimeField> Add for UnivariatePolynomial<F> {
     }
 }
 
-// impl <F: PrimeField> Display for UnivariatePolynomial<F> {
+impl<F: PrimeField> Display for UnivariatePolynomial<F> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for i in 0..self.coefficients.len() {
+            if self.coefficients[i] == F::zero() {
+                continue;
+            }
+            if i == 0 {
+                write!(f, "{}", self.coefficients[i])?
+            } else if self.coefficients[i] == F::one() {
+                write!(f, " + x^{}", i)?
+            } else {
+                write!(f, " + {}x^{}", self.coefficients[i], i)?
+            }
+        }
+        Ok(())
+    }
+}
 
-// }
+// Implement native division for univariate polynomials
+impl<F: PrimeField> Div for UnivariatePolynomial<F> {
+    // Result should be the quotient and remainder
+
+    type Output = (UnivariatePolynomial<F>, UnivariatePolynomial<F>);
+
+    fn div(self, rhs: Self) -> Self::Output {
+        assert!(
+            self.coefficients.len() >= rhs.coefficients.len(),
+            "Dividend degree should be higher than divisor"
+        );
+        let mut res = vec![];
+
+        let mut remainder: Vec<F> = self.coefficients.into_iter().rev().collect();
+        let divisor: Vec<F> = rhs.coefficients.into_iter().rev().collect();
+
+        for i in 0..remainder.len() {
+            if remainder.len() - i < divisor.len() {
+                break;
+            }
+
+            let mut divisor_index = 0;
+            let quotient = remainder[i] / divisor[divisor_index];
+
+            for _ in 0..divisor.len() {
+                remainder[i + divisor_index] =
+                    remainder[i + divisor_index] - (quotient * divisor[divisor_index]);
+
+                divisor_index += 1;
+            }
+
+            res.push(quotient);
+        }
+
+        res.reverse();
+        remainder.reverse();
+
+        // Returns the quotient and remainder polynomials
+        (
+            UnivariatePolynomial::new(res),
+            UnivariatePolynomial::new(remainder),
+        )
+    }
+}
+
+// TODO:
+// Implement FFT and IFFT
 
 //////////////////////////////////////////////
 /// TESTS
 /// /////////////////////////////////////////
 #[cfg(test)]
 mod tests {
-    use std::vec;
 
     use crate::multilinear_polynomial::{MultilinearMonomial, MultilinearPolynomial};
 
@@ -283,7 +345,7 @@ mod tests {
             Fq::from(27),
             Fq::from(38),
         ];
-        let poly_res = UnivariatePolynomial::interpolate(x_vals, y_vals).truncate();
+        let poly_res = UnivariatePolynomial::interpolate(&x_vals, &y_vals).truncate();
         let res_vals = vec![Fq::from(3), Fq::from(2), Fq::from(1)];
         assert_eq!(poly_res, UnivariatePolynomial::new(res_vals));
     }
@@ -320,5 +382,44 @@ mod tests {
         ]);
         let new_poly = UnivariatePolynomial::try_from(multilinear_poly).unwrap();
         assert!(new_poly == UnivariatePolynomial::new(vec![Fq::from(14), Fq::from(9)]));
+    }
+
+    #[test]
+    fn test_display_univariate_poly() {
+        let poly = UnivariatePolynomial::new(vec![
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(1),
+            Fq::from(4),
+            Fq::from(1),
+            Fq::from(6),
+        ]);
+
+        println!("{}", poly);
+    }
+
+    #[test]
+    pub fn test_poly_division() {
+        let dividend = UnivariatePolynomial::new(vec![Fq::from(6), Fq::from(5), Fq::from(1)]);
+        let divisor = UnivariatePolynomial::new(vec![Fq::from(2), Fq::from(1)]);
+
+        let (quotient, remainder): (UnivariatePolynomial<Fq>, UnivariatePolynomial<Fq>) =
+            dividend / divisor;
+
+        assert!(remainder.truncate().is_zero(), "No remainder expected");
+        assert!(
+            quotient == UnivariatePolynomial::new(vec![Fq::from(3), Fq::from(1)]),
+            "Incorrect quotient from division"
+        );
+
+        /////////////////
+
+        let poly1 = UnivariatePolynomial::new(vec![Fq::from(15), Fq::from(8), Fq::from(1)]);
+        let poly2 = UnivariatePolynomial::new(vec![Fq::from(5), Fq::from(1)]);
+        let expected = UnivariatePolynomial::new(vec![Fq::from(3), Fq::from(1)]);
+
+        let (res1quo, res1rem) = poly1 / poly2;
+        assert!(res1rem.truncate().is_zero(), "No remainder expected");
+        assert!(res1quo == expected, "Incorrect quotient from division");
     }
 }
