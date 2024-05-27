@@ -5,7 +5,7 @@ use std::{
     ops::{Add, Div, Mul},
 };
 
-use crate::multilinear_polynomial::MultilinearPolynomial;
+use crate::multilinear_polynomial::coef_form::MultilinearPolynomial;
 
 // Univariate Polynomial
 #[derive(Debug, Clone, PartialEq)]
@@ -271,7 +271,7 @@ impl<F: PrimeField> Div for UnivariatePolynomial<F> {
 #[cfg(test)]
 mod tests {
 
-    use crate::multilinear_polynomial::{MultilinearMonomial, MultilinearPolynomial};
+    use crate::multilinear_polynomial::coef_form::{MultilinearMonomial, MultilinearPolynomial};
 
     use super::UnivariatePolynomial;
     use ark_ff::{Fp64, MontBackend, MontConfig};
@@ -387,8 +387,8 @@ mod tests {
     #[test]
     fn test_display_univariate_poly() {
         let poly = UnivariatePolynomial::new(vec![
-            Fq::from(3),
             Fq::from(0),
+            Fq::from(3),
             Fq::from(1),
             Fq::from(4),
             Fq::from(1),
