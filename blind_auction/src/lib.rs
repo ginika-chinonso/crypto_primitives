@@ -1,10 +1,10 @@
 use keccak_rust::*;
 
-struct BlindAuction {
-    commitments: Vec<[u8; 32]>,
+pub struct BlindAuction {
+    pub commitments: Vec<[u8; 32]>,
 }
 
-trait Auction<T> {
+pub trait Auction<T> {
     fn new() -> Self;
     fn commit(&mut self, commitment: &[u8; 32]) -> usize;
     fn open(&self, amount: usize, salt: &[u8], index: usize) -> Result<usize, String>;
