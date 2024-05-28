@@ -1,7 +1,7 @@
 // Sumcheck protocol
 
-use polynomials::univariate_polynomial::UnivariatePolynomial;
 use ark_ff::PrimeField;
+use polynomials::univariate_polynomial::UnivariatePolynomial;
 
 pub struct Channel<F: PrimeField> {
     pub message: Vec<UnivariatePolynomial<F>>,
@@ -9,9 +9,12 @@ pub struct Channel<F: PrimeField> {
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::{Fp64, MontBackend, MontConfig};
-    use polynomials::multilinear_polynomial::{MultilinearMonomial, MultilinearPolynomial};
     use super::super::prover::Prover;
+    use ark_ff::{Fp64, MontBackend, MontConfig};
+    use polynomials::{
+        multilinear_polynomial::coef_form::{MultilinearMonomial, MultilinearPolynomial},
+        univariate_polynomial::UnivariatePolynomial,
+    };
 
     #[derive(MontConfig)]
     #[modulus = "17"]
@@ -129,31 +132,13 @@ mod tests {
         let prover = Prover::new(poly, Fq::from(10));
 
         let round_1_poly = prover.prove(&vec![]);
-        assert!(
-            round_1_poly
-                == MultilinearPolynomial::new(vec![
-                    MultilinearMonomial::new(Fq::from(3), vec![false]),
-                    MultilinearMonomial::new(Fq::from(4), vec![true]),
-                ])
-        );
+        assert!(round_1_poly == UnivariatePolynomial::new(vec![Fq::from(3), Fq::from(4)]));
 
         let round_2_poly = prover.prove(&vec![Fq::from(5)]);
-        assert!(
-            round_2_poly
-                == MultilinearPolynomial::new(vec![MultilinearMonomial::new(
-                    Fq::from(23),
-                    vec![true]
-                ),])
-        );
+        assert!(round_2_poly == UnivariatePolynomial::new(vec![Fq::from(0), Fq::from(23)]));
 
         let round_3_poly = prover.prove(&vec![Fq::from(5), Fq::from(9)]);
-        assert!(
-            round_3_poly
-                == MultilinearPolynomial::new(vec![
-                    MultilinearMonomial::new(Fq::from(90), vec![false]),
-                    MultilinearMonomial::new(Fq::from(27), vec![true]),
-                ])
-        );
+        assert!(round_3_poly == UnivariatePolynomial::new(vec![Fq::from(90), Fq::from(27)]));
     }
 
     // #[test]

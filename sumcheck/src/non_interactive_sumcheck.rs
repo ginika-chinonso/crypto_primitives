@@ -1,20 +1,23 @@
 use ark_ff::{BigInteger, PrimeField};
-use serde::{Deserialize, Serialize};
+use ark_serialize::*;
 
 use fiat_shamir_transcript::Transcript;
-use polynomials::multilinear_polynomial::MultilinearPolynomialTrait;
+use polynomials::{
+    multilinear_polynomial::traits::MultilinearPolynomialTrait,
+    univariate_polynomial::UnivariatePolynomial,
+};
 
 use super::prover::Prover;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SumcheckProof<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> {
+#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
+pub struct SumcheckProof<F: PrimeField> {
     pub sum: F,
     pub number_of_vars: usize,
     pub challenges: Vec<F>,
-    pub rounds_poly: Vec<MPT>,
+    pub rounds_poly: Vec<UnivariatePolynomial<F>>,
 }
 
-impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone> SumcheckProof<F, MPT> {
+impl<F: PrimeField> SumcheckProof<F> {
     pub fn new(sum: F, number_of_vars: usize) -> Self {
         Self {
             sum,
@@ -50,7 +53,7 @@ impl Sumcheck {
     >(
         initial_poly: &MPT,
         sum: &F,
-    ) -> SumcheckProof<F, MPT> {
+    ) -> SumcheckProof<F> {
         let mut proof = SumcheckProof::new(*sum, initial_poly.number_of_vars());
         let mut transcript = Transcript::new();
         let mut challenges: Vec<F> = vec![];
@@ -62,7 +65,7 @@ impl Sumcheck {
 
         for _ in 0..initial_poly.number_of_vars() {
             let round_poly = prover.prove(&challenges);
-            transcript.add_multivariate_poly(&round_poly);
+            transcript.add_univariate_poly(&round_poly);
             proof.rounds_poly.push(round_poly);
 
             challenges.push(transcript.sample_field_element());
@@ -74,7 +77,7 @@ impl Sumcheck {
     }
 
     pub fn verify<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::fmt::Debug>(
-        mut proof: SumcheckProof<F, MPT>,
+        mut proof: SumcheckProof<F>,
         initial_poly: MPT,
     ) -> Result<bool, String> {
         let (challenges, _) = Sumcheck::verify_partial(&mut proof)?;
@@ -113,11 +116,8 @@ impl Sumcheck {
     //     proof
     // }
 
-    pub fn verify_partial<
-        F: PrimeField,
-        MPT: MultilinearPolynomialTrait<F> + Clone + std::fmt::Debug,
-    >(
-        proof: &mut SumcheckProof<F, MPT>,
+    pub fn verify_partial<F: PrimeField>(
+        proof: &mut SumcheckProof<F>,
     ) -> Result<(Vec<(usize, F)>, F), String> {
         let mut transcript = Transcript::new();
         let mut challenges: Vec<(usize, F)> = vec![];
@@ -125,8 +125,8 @@ impl Sumcheck {
         transcript.append(proof.sum.into_bigint().to_bytes_be().as_slice());
 
         for i in 0..proof.number_of_vars {
-            let verifier_check = proof.rounds_poly[i].evaluate(&vec![(0, F::zero())])
-                + proof.rounds_poly[i].evaluate(&vec![(0, F::one())]);
+            let verifier_check =
+                proof.rounds_poly[i].evaluate(F::zero()) + proof.rounds_poly[i].evaluate(F::one());
 
             // dbg!(&verifier_check);
             // dbg!(&i);
@@ -136,12 +136,12 @@ impl Sumcheck {
                 return Err("Invalid proof".to_string());
             };
 
-            transcript.add_multivariate_poly(&proof.rounds_poly[i]);
+            transcript.add_univariate_poly(&proof.rounds_poly[i]);
             challenges.extend(vec![(i, transcript.sample_field_element::<F>())]);
 
             let (_, challenge) = challenges[i];
 
-            proof.sum = proof.rounds_poly[i].evaluate(&vec![(0, challenge)]);
+            proof.sum = proof.rounds_poly[i].evaluate(challenge);
         }
         Ok((challenges, proof.sum))
     }
@@ -149,7 +149,13 @@ impl Sumcheck {
 
 #[cfg(test)]
 mod tests {
-    use polynomials::multilinear_polynomial::{MultilinearMonomial, MultilinearPolynomial};
+    use std::time::Instant;
+
+    use polynomials::multilinear_polynomial::coef_form::{
+        MultilinearMonomial, MultilinearPolynomial,
+    };
+    use tracing::info;
+    use tracing_test::traced_test;
 
     use super::Sumcheck;
 
@@ -161,8 +167,12 @@ mod tests {
     pub struct FqConfig;
     pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
 
+    #[traced_test]
     #[test]
     fn test_noninteractive_sumcheck() {
+        info!("Starting sumcheck proving");
+        let start = Instant::now();
+
         let proof = Sumcheck::prove(
             &MultilinearPolynomial::new(vec![
                 MultilinearMonomial::new(Fq::from(2), vec![true, true, false]),
@@ -170,6 +180,12 @@ mod tests {
             ]),
             &Fq::from(10),
         );
+        let duration = start.elapsed().as_micros();
+        info!("Finished proving sumcheck: {}micros", duration);
+
+        info!("Starting sumcheck verification");
+        let start = Instant::now();
+
         let accepted = Sumcheck::verify(
             proof,
             MultilinearPolynomial::new(vec![
@@ -177,6 +193,8 @@ mod tests {
                 MultilinearMonomial::new(Fq::from(3), vec![false, true, true]),
             ]),
         );
+        let duration = start.elapsed().as_micros();
+        info!("Finished sumcheck evaluation: {}micros", duration);
 
         assert!(accepted.unwrap());
     }
