@@ -6,7 +6,6 @@ use std::{
     ops::{Add, Div, Mul},
 };
 
-
 // Univariate Polynomial
 #[derive(Debug, Clone, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct UnivariatePolynomial<F: PrimeField> {
@@ -108,7 +107,6 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
         }
         res
     }
-
 }
 
 // Implement native multiplication for univariate polynomial

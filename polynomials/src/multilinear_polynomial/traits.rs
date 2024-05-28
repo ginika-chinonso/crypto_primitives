@@ -1,3 +1,4 @@
+use crate::univariate_polynomial::UnivariatePolynomial;
 use ark_ff::PrimeField;
 
 pub trait MultilinearPolynomialTrait<F: PrimeField> {
@@ -8,4 +9,5 @@ pub trait MultilinearPolynomialTrait<F: PrimeField> {
     fn relabel(&self) -> Self;
     fn additive_identity() -> Self;
     fn sum_over_the_boolean_hypercube(&self) -> F;
+    fn to_univariate(&self) -> Result<UnivariatePolynomial<F>, String>;
 }
