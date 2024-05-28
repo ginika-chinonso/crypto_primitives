@@ -5,14 +5,18 @@ use std::{
 };
 
 use ark_ff::{BigInteger, PrimeField};
+use ark_serialize::*;
 
-use crate::utils::{check_bit, get_binary_string, selector_to_index};
 use super::traits::MultilinearPolynomialTrait;
+use crate::{
+    univariate_polynomial::UnivariatePolynomial,
+    utils::{check_bit, get_binary_string, selector_to_index},
+};
 
 // Multilinear Monomial representation where
 // coefficient = Coefficient of the monomial
 // vars = variables vector where index represents variable
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct MultilinearMonomial<F: PrimeField> {
     pub coefficient: F,
     pub vars: Vec<bool>,
@@ -20,11 +24,10 @@ pub struct MultilinearMonomial<F: PrimeField> {
 
 // Multilinear Polynomial representation
 // terms = mMonomial terms f the polynomial
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct MultilinearPolynomial<F: PrimeField> {
     pub terms: Vec<MultilinearMonomial<F>>,
 }
-
 
 // Multilinear monomial implementation
 impl<F: PrimeField> MultilinearMonomial<F> {
@@ -138,7 +141,8 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
 
         for (coeffs, var) in terms_map.values() {
             if *coeffs != F::zero() {
-                res.terms.push(MultilinearMonomial::new(coeffs.clone(), var.clone()));
+                res.terms
+                    .push(MultilinearMonomial::new(coeffs.clone(), var.clone()));
             }
         }
 
@@ -352,6 +356,40 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
         }
         res
     }
+
+    // Converts a multilinear polynomial in coefficient form to a univariate polynomial
+    fn to_univariate(&self) -> Result<UnivariatePolynomial<F>, String> {
+        let mut res = UnivariatePolynomial::<F>::new(vec![]);
+
+        if self.terms.len() == 0 {
+            res = UnivariatePolynomial {
+                coefficients: vec![],
+            };
+        } else if self.terms[0].vars.len() > 1 {
+            return Err("Not a univariate poly, try relabelling".to_string());
+        } else if self.terms[0].vars.is_empty() {
+            res = UnivariatePolynomial::<F>::new(vec![self.terms[0].coefficient]);
+        } else {
+            if self.terms[0].vars[0] == false {
+                res = UnivariatePolynomial::<F>::new(vec![
+                    self.terms[0].coefficient,
+                    self.terms
+                        .get(1)
+                        .map(|a| a.coefficient)
+                        .unwrap_or(F::zero()),
+                ]);
+            } else {
+                res = UnivariatePolynomial::<F>::new(vec![
+                    self.terms
+                        .get(1)
+                        .map(|a| a.coefficient)
+                        .unwrap_or(F::zero()),
+                    self.terms[0].coefficient,
+                ]);
+            }
+        }
+        Ok(res)
+    }
 }
 
 impl<F: PrimeField> Display for MultilinearMonomial<F> {
@@ -363,7 +401,7 @@ impl<F: PrimeField> Display for MultilinearMonomial<F> {
     }
 }
 
-impl <F: PrimeField>Display for MultilinearPolynomial<F> {
+impl<F: PrimeField> Display for MultilinearPolynomial<F> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for i in 0..self.terms.len() {
             if i == 0 {
@@ -689,7 +727,6 @@ mod tests {
         println!("{poly}");
     }
 
-
     #[test]
     fn test_display_multilinear_polynomial() {
         let poly = MultilinearPolynomial::new(vec![
@@ -703,7 +740,6 @@ mod tests {
 
         println!("{poly}");
     }
-
 
     #[test]
     fn test_add_polys_with_different_num_of_vars() {
@@ -723,7 +759,13 @@ mod tests {
 
         let res2 = poly2 + poly1;
 
-        assert!(res1.number_of_vars() == 3, "Number of variables should be the same");
-        assert!(res2.number_of_vars() == 3, "Number of variables should be the same");
+        assert!(
+            res1.number_of_vars() == 3,
+            "Number of variables should be the same"
+        );
+        assert!(
+            res2.number_of_vars() == 3,
+            "Number of variables should be the same"
+        );
     }
 }
