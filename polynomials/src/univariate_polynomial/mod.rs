@@ -90,7 +90,7 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
 
     pub fn additive_identity() -> Self {
         Self {
-            coefficients: vec![],
+            coefficients: vec![F::zero()],
         }
     }
 

@@ -105,7 +105,7 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
     }
 
     // Add like terms in a multilinear polynomial
-    fn simplify(&self) -> MultilinearPolynomial<F> {
+    pub fn simplify(&self) -> MultilinearPolynomial<F> {
         if self.is_zero() {
             return MultilinearPolynomial::new(vec![MultilinearMonomial::new(
                 F::zero(),
@@ -165,7 +165,17 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
 
     // Returns true of polynomial is a zero polynomial
     pub fn is_zero(&self) -> bool {
-        self.terms.len() == 0
+        // self.terms.len() == 0
+        let mut res = true;
+        for term in &self.terms {
+            if term.coefficient.is_zero() {
+                continue;
+            } else {
+                res = false;
+                return res;
+            }
+        }
+        res
     }
 
     // Interpolate a polynomial using the boolean hypercube
@@ -227,17 +237,21 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
     // and Field element which is the point to evaluate at
     fn partial_eval(&self, x: &Vec<(usize, F)>) -> Self {
         let mut res = self.clone();
-        for i in 0..res.terms.len() {
-            for j in 0..x.len() {
-                let (var, val) = x[j];
-                assert!(var <= res.number_of_vars(), "Variable not found");
-                if res.terms[i].vars[var] {
-                    res.terms[i].coefficient *= val;
-                    res.terms[i].vars[var] = false;
-                };
+        if res.is_zero() {
+            res
+        } else {
+            for i in 0..res.terms.len() {
+                for j in 0..x.len() {
+                    let (var, val) = x[j];
+                    assert!(var <= res.number_of_vars(), "Variable not found");
+                    if res.terms[i].vars[var] {
+                        res.terms[i].coefficient *= val;
+                        res.terms[i].vars[var] = false;
+                    };
+                }
             }
+            res.simplify()
         }
-        res.simplify()
     }
 
     // Relabels the variables to account for variables that have been evaluated
@@ -367,7 +381,7 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
             };
         } else if self.terms[0].vars.len() > 1 {
             return Err("Not a univariate poly, try relabelling".to_string());
-        } else if self.terms[0].vars.is_empty() {
+        } else if self.number_of_vars() == 0 {
             res = UnivariatePolynomial::<F>::new(vec![self.terms[0].coefficient]);
         } else {
             if self.terms[0].vars[0] == false {
