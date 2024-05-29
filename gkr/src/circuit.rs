@@ -5,14 +5,15 @@
 // - TODO: Implement sum over the boolean hypercube for multilinear poly
 // prevent the creation of an empty layer
 
+use ark_serialize::*;
 use std::cmp::max;
 
 use ark_ff::PrimeField;
 
+use polynomials::multilinear_polynomial::coef_form::{MultilinearMonomial, MultilinearPolynomial};
 use utils::{check_bit, get_binary_string};
-use polynomials::multilinear_polynomial::{MultilinearMonomial, MultilinearPolynomial};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, CanonicalSerialize)]
 pub struct Circuit {
     pub layers: Vec<Layer>,
     pub depth: usize,
@@ -28,10 +29,10 @@ impl Circuit {
         self.layers.len()
     }
 
-    pub fn evaluate<F: PrimeField>(&self, inputs: Vec<F>) -> Vec<Vec<F>> {
+    pub fn evaluate<F: PrimeField>(&self, inputs: &Vec<F>) -> Vec<Vec<F>> {
         let mut res = vec![vec![F::zero(); inputs.len()]; self.depth + 1];
         let mut depth = self.depth;
-        res[depth] = inputs;
+        res[depth] = inputs.to_vec();
 
         loop {
             if depth == 0 {
@@ -76,7 +77,7 @@ impl Circuit {
     }
 
     pub fn w_mle<F: PrimeField>(&self, layer_eval: Vec<F>) -> MultilinearPolynomial<F> {
-        MultilinearPolynomial::interpolate(layer_eval)
+        MultilinearPolynomial::interpolate(&layer_eval)
     }
 
     pub fn layer_mle<F: PrimeField>(&self, layer: usize) -> [MultilinearPolynomial<F>; 2] {
@@ -106,9 +107,40 @@ impl Circuit {
             res + selector_poly(i.output, i.left, i.right, layer_len, layer_input_len)
         })
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut res = vec![];
+
+        res.append(&mut self.depth.to_be_bytes().to_vec());
+
+        for layer in &self.layers {
+            res.append(&mut layer.to_bytes());
+        }
+
+        res
+    }
 }
 
-#[derive(Debug, Clone)]
+// impl Serialize for Circuit {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: serde::Serializer {
+
+//         // let res = vec![];
+//         let mut seq = serializer.serialize_seq(Some(self.depth))?;
+
+//         // res.push(self.depth.to_be_bytes());
+
+//         for layer in &self.layers {
+//             // res.push(layer.serialize(serializer))
+//             let _ = seq.serialize_element(&layer)?;
+//         }
+
+//         seq.end()
+//     }
+// }
+
+#[derive(Debug, Clone, Copy, CanonicalSerialize)]
 pub struct Wire {
     pub output: usize,
     pub left: usize,
@@ -123,9 +155,19 @@ impl Wire {
             right,
         }
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut res = vec![];
+
+        res.append(&mut self.output.to_be_bytes().to_vec());
+        res.append(&mut self.left.to_be_bytes().to_vec());
+        res.append(&mut self.right.to_be_bytes().to_vec());
+
+        res
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, CanonicalSerialize)]
 pub struct Layer {
     pub add_gates: Vec<Wire>,
     pub mul_gates: Vec<Wire>,
@@ -155,6 +197,19 @@ impl Layer {
             max_index = max(wire.right, max_index);
         }
         max_index
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut res = vec![];
+
+        for wire in &self.add_gates {
+            res.append(&mut wire.to_bytes());
+        }
+        for wire in &self.mul_gates {
+            res.append(&mut wire.to_bytes());
+        }
+
+        res
     }
 }
 
@@ -205,13 +260,13 @@ pub fn selector_poly<F: PrimeField>(
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use ark_ff::{Fp64, MontBackend, MontConfig};
 
     use crate::circuit::selector_poly;
 
     use super::{Circuit, Layer, Wire};
-    use polynomials::multilinear_polynomial::MultilinearPolynomialTrait;
+    use polynomials::multilinear_polynomial::traits::MultilinearPolynomialTrait;
 
     #[derive(MontConfig)]
     #[modulus = "17"]
@@ -233,10 +288,10 @@ mod test {
     }
 
     #[test]
-    fn test_circuit_eval() {
+    pub fn test_circuit_eval() {
         let new_circuit = create_circuit();
 
-        let circuit_eval = new_circuit.evaluate(vec![
+        let circuit_eval = new_circuit.evaluate(&vec![
             Fq::from(5),
             Fq::from(2),
             Fq::from(3),

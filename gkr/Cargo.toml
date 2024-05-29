@@ -12,3 +12,8 @@ utils = {path = "../utils"}
 ark-ff = "0.4.2"
 ark-std = "0.4.0"
 sumcheck = {path = "../sumcheck"}
+tracing-subscriber = "0.3.18"
+tracing = "0.1.40"
+tracing-test = "0.2.4"
+serde = "1.0.197"
+ark-serialize = "0.4.2"
