@@ -373,35 +373,33 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
 
     // Converts a multilinear polynomial in coefficient form to a univariate polynomial
     fn to_univariate(&self) -> Result<UnivariatePolynomial<F>, String> {
-        let mut res = UnivariatePolynomial::<F>::new(vec![]);
-
-        if self.terms.len() == 0 {
-            res = UnivariatePolynomial {
+        let res = if self.terms.len() == 0 {
+            UnivariatePolynomial {
                 coefficients: vec![],
-            };
+            }
         } else if self.terms[0].vars.len() > 1 {
             return Err("Not a univariate poly, try relabelling".to_string());
         } else if self.number_of_vars() == 0 {
-            res = UnivariatePolynomial::<F>::new(vec![self.terms[0].coefficient]);
+            UnivariatePolynomial::<F>::new(vec![self.terms[0].coefficient])
         } else {
             if self.terms[0].vars[0] == false {
-                res = UnivariatePolynomial::<F>::new(vec![
+                UnivariatePolynomial::<F>::new(vec![
                     self.terms[0].coefficient,
                     self.terms
                         .get(1)
                         .map(|a| a.coefficient)
                         .unwrap_or(F::zero()),
-                ]);
+                ])
             } else {
-                res = UnivariatePolynomial::<F>::new(vec![
+                UnivariatePolynomial::<F>::new(vec![
                     self.terms
                         .get(1)
                         .map(|a| a.coefficient)
                         .unwrap_or(F::zero()),
                     self.terms[0].coefficient,
-                ]);
+                ])
             }
-        }
+        };
         Ok(res)
     }
 }
