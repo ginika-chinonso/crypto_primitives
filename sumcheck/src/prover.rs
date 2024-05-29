@@ -1,8 +1,9 @@
+use ark_ff::PrimeField;
 use polynomials::{
-        multilinear_polynomial::MultilinearPolynomialTrait, univariate_polynomial::UnivariatePolynomial
+    multilinear_polynomial::traits::MultilinearPolynomialTrait,
+    univariate_polynomial::UnivariatePolynomial,
 };
 use utils::get_binary_string;
-use ark_ff::PrimeField;
 
 #[derive(Debug, Clone)]
 pub struct Transcript<F: PrimeField> {
@@ -29,7 +30,7 @@ impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<O
         }
     }
 
-    pub fn prove(&self, challenges: &[F]) -> MPT {
+    pub fn prove(&self, challenges: &[F]) -> UnivariatePolynomial<F> {
         let mut num_of_vars = self.initial_poly.number_of_vars();
         let mut round_poly = MPT::additive_identity();
 
@@ -56,11 +57,10 @@ impl<F: PrimeField, MPT: MultilinearPolynomialTrait<F> + Clone + std::ops::Add<O
             let eval_res = self
                 .initial_poly
                 .clone()
-                .partial_eval(&eval_points_as_field)
-                .relabel();
+                .partial_eval(&eval_points_as_field);
             round_poly = round_poly + eval_res;
         }
         let relabeled_round_poly = round_poly.relabel();
-        relabeled_round_poly
+        relabeled_round_poly.to_univariate().unwrap()
     }
 }

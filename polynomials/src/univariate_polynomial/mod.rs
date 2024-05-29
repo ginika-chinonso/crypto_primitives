@@ -1,14 +1,13 @@
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
+use ark_serialize::*;
 use std::{
     collections::HashMap,
     fmt::Display,
     ops::{Add, Div, Mul},
 };
 
-use crate::multilinear_polynomial::MultilinearPolynomial;
-
 // Univariate Polynomial
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct UnivariatePolynomial<F: PrimeField> {
     // Where elements index is their x power
     pub coefficients: Vec<F>,
@@ -91,7 +90,7 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
 
     pub fn additive_identity() -> Self {
         Self {
-            coefficients: vec![],
+            coefficients: vec![F::zero()],
         }
     }
 
@@ -99,6 +98,14 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
         Self {
             coefficients: vec![F::one()],
         }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut res = Vec::new();
+        for coefficient in self.coefficients.to_vec() {
+            res.extend(coefficient.into_bigint().to_bytes_be())
+        }
+        res
     }
 }
 
@@ -128,47 +135,6 @@ impl<F: PrimeField> Mul for UnivariatePolynomial<F> {
         }
 
         UnivariatePolynomial::new(res_array)
-    }
-}
-
-// Converts a multilinear polynomial to a univariate polynomial
-impl<F: PrimeField> TryFrom<MultilinearPolynomial<F>> for UnivariatePolynomial<F> {
-    type Error = &'static str;
-
-    fn try_from(value: MultilinearPolynomial<F>) -> Result<Self, Self::Error> {
-        let mut res = UnivariatePolynomial::<F>::new(vec![]);
-
-        if value.terms.len() == 0 {
-            res = UnivariatePolynomial {
-                coefficients: vec![],
-            };
-        } else if value.terms[0].vars.len() > 1 {
-            return Err("Not a univariate poly, try relabelling");
-        } else if value.terms[0].vars.is_empty() {
-            res = UnivariatePolynomial::<F>::new(vec![value.terms[0].coefficient]);
-        } else {
-            if value.terms[0].vars[0] == false {
-                res = UnivariatePolynomial::<F>::new(vec![
-                    value.terms[0].coefficient,
-                    value
-                        .terms
-                        .get(1)
-                        .map(|a| a.coefficient)
-                        .unwrap_or(F::zero()),
-                ]);
-            } else {
-                res = UnivariatePolynomial::<F>::new(vec![
-                    value
-                        .terms
-                        .get(1)
-                        .map(|a| a.coefficient)
-                        .unwrap_or(F::zero()),
-                    value.terms[0].coefficient,
-                ]);
-            }
-        }
-
-        Ok(res)
     }
 }
 
@@ -271,7 +237,10 @@ impl<F: PrimeField> Div for UnivariatePolynomial<F> {
 #[cfg(test)]
 mod tests {
 
-    use crate::multilinear_polynomial::{MultilinearMonomial, MultilinearPolynomial};
+    use crate::multilinear_polynomial::{
+        coef_form::{MultilinearMonomial, MultilinearPolynomial},
+        traits::MultilinearPolynomialTrait,
+    };
 
     use super::UnivariatePolynomial;
     use ark_ff::{Fp64, MontBackend, MontConfig};
@@ -380,15 +349,15 @@ mod tests {
             MultilinearMonomial::new(Fq::from(9), vec![true]),
             MultilinearMonomial::new(Fq::from(14), vec![false]),
         ]);
-        let new_poly = UnivariatePolynomial::try_from(multilinear_poly).unwrap();
+        let new_poly = multilinear_poly.to_univariate().unwrap();
         assert!(new_poly == UnivariatePolynomial::new(vec![Fq::from(14), Fq::from(9)]));
     }
 
     #[test]
     fn test_display_univariate_poly() {
         let poly = UnivariatePolynomial::new(vec![
-            Fq::from(3),
             Fq::from(0),
+            Fq::from(3),
             Fq::from(1),
             Fq::from(4),
             Fq::from(1),

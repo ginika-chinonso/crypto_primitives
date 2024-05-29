@@ -1,7 +1,8 @@
-use polynomials::{
-    multilinear_polynomial::MultilinearPolynomialTrait, univariate_polynomial::UnivariatePolynomial,
-};
 use ark_ff::PrimeField;
+use polynomials::{
+    multilinear_polynomial::traits::MultilinearPolynomialTrait,
+    univariate_polynomial::UnivariatePolynomial,
+};
 
 pub struct Verifier<F: PrimeField, MPT: MultilinearPolynomialTrait<F>> {
     pub initial_poly: MPT,

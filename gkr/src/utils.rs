@@ -1,7 +1,9 @@
 use ark_ff::PrimeField;
 
 use polynomials::{
-    multilinear_polynomial::{MultilinearPolynomial, MultilinearPolynomialTrait},
+    multilinear_polynomial::{
+        coef_form::MultilinearPolynomial, traits::MultilinearPolynomialTrait,
+    },
     univariate_polynomial::UnivariatePolynomial,
 };
 
@@ -55,7 +57,8 @@ mod test {
     use ark_ff::{Fp64, MontBackend, MontConfig};
     use polynomials::{
         multilinear_polynomial::{
-            MultilinearMonomial, MultilinearPolynomial, MultilinearPolynomialTrait,
+            coef_form::{MultilinearMonomial, MultilinearPolynomial},
+            traits::MultilinearPolynomialTrait,
         },
         univariate_polynomial::UnivariatePolynomial,
     };

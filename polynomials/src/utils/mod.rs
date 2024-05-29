@@ -1,4 +1,4 @@
-use super::multilinear_polynomial::{MultilinearMonomial, MultilinearPolynomial};
+use super::multilinear_polynomial::coef_form::{MultilinearMonomial, MultilinearPolynomial};
 use ark_ff::PrimeField;
 
 // Get padded binary string of a decimal number
@@ -27,3 +27,38 @@ pub fn check_bit<F: PrimeField>(bit: usize) -> MultilinearPolynomial<F> {
     res
 }
 
+/// Maps a binary string to a number
+pub fn selector_to_index(selector: &[bool]) -> usize {
+    let mut sum = 0;
+    let mut adder = 1;
+
+    for i in 0..selector.len() {
+        if selector[i] {
+            sum += adder;
+        }
+        adder *= 2;
+    }
+
+    sum
+}
+
+pub fn get_sib(index: usize, num_of_vars: usize, var: usize) -> usize {
+    index + (2_usize.pow(num_of_vars as u32) / 2_usize.pow(var as u32))
+}
+
+pub fn pad_to_len(num: usize, len: usize) -> String {
+    let m = format!("{:b}", num);
+    if m.len() < len {
+        let n = String::from("0").repeat(len - m.len());
+        return n + &m;
+    };
+    m
+}
+
+pub fn contains_var(val: String, var: usize) -> bool {
+    if val.chars().nth(var).unwrap().to_string() == "0".to_string() {
+        return false;
+    } else {
+        return true;
+    }
+}

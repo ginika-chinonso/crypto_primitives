@@ -1,4 +1,8 @@
+use std::time::Instant;
+
 use ark_ff::PrimeField;
+use ark_serialize::*;
+use tracing::*;
 
 use fiat_shamir_transcript::Transcript;
 use sumcheck::non_interactive_sumcheck::{Sumcheck, SumcheckProof};
@@ -7,13 +11,15 @@ use crate::utils::{eval_l, l_function, q_function};
 
 use crate::{circuit::Circuit, eval_gate::EvalGate};
 use polynomials::{
-    multilinear_polynomial::{MultilinearPolynomial, MultilinearPolynomialTrait},
+    multilinear_polynomial::{
+        coef_form::MultilinearPolynomial, traits::MultilinearPolynomialTrait,
+    },
     univariate_polynomial::UnivariatePolynomial,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, CanonicalSerialize)]
 pub struct GKRProof<F: PrimeField> {
-    pub sumcheck_proofs: Vec<SumcheckProof<F, EvalGate<F>>>,
+    pub sumcheck_proofs: Vec<SumcheckProof<F>>,
     pub output: MultilinearPolynomial<F>,
     pub q_funcs: Vec<UnivariatePolynomial<F>>,
 }
@@ -31,7 +37,10 @@ impl<F: PrimeField> GKRProof<F> {
 pub struct GKR {}
 
 impl GKR {
-    pub fn prove<F: PrimeField>(circuit: Circuit, input: Vec<F>) -> GKRProof<F> {
+    pub fn prove<F: PrimeField>(circuit: &Circuit, input: &Vec<F>) -> GKRProof<F> {
+        info!("Starting to prove");
+        let start = Instant::now();
+
         let circuit_eval = circuit.evaluate(input);
 
         let mut transcript = Transcript::new();
@@ -62,10 +71,7 @@ impl GKR {
                 &vec![layer_w_mle],
             );
 
-            let mut round_sumcheck_proof = Sumcheck::prove(&layer_eval_gate, &m);
-            // if Sumcheck::verify_partial(&mut round_sumcheck_proof).is_err() {
-            //     dbg!(&layer_eval_gate);
-            // };
+            let round_sumcheck_proof = Sumcheck::prove(&layer_eval_gate, &m);
 
             let (b, c) = round_sumcheck_proof
                 .challenges
@@ -88,7 +94,8 @@ impl GKR {
 
             gkr_proof.q_funcs.push(q);
         }
-
+        let duration = start.elapsed().as_millis();
+        info!("Finished proving: Took: {} ms", duration);
         gkr_proof
     }
 
@@ -97,6 +104,9 @@ impl GKR {
         proof: GKRProof<F>,
         circuit: Circuit,
     ) -> Result<bool, String> {
+        info!("Starting verification");
+        let start = Instant::now();
+
         let mut transcript = Transcript::new();
 
         transcript.append(proof.output.to_bytes().as_slice());
@@ -160,10 +170,12 @@ impl GKR {
             m = proof.q_funcs[i].evaluate(r_star);
         }
 
-        let input_mle = MultilinearPolynomial::<F>::interpolate(input);
+        let input_mle = MultilinearPolynomial::<F>::interpolate(&input);
 
         let verifier_m = input_mle.evaluate(&r.into_iter().enumerate().collect());
 
+        let duration = start.elapsed().as_millis();
+        info!("Finished verification. Took {} ms", duration);
         Ok(verifier_m == m)
     }
 }
@@ -171,12 +183,13 @@ impl GKR {
 #[cfg(test)]
 mod test {
     use ark_ff::{Fp64, MontBackend, MontConfig};
+    use tracing_test::traced_test;
 
     use crate::{
         circuit::{Circuit, Layer, Wire},
         eval_gate::EvalGate,
     };
-    use polynomials::multilinear_polynomial::MultilinearPolynomialTrait;
+    use polynomials::multilinear_polynomial::traits::MultilinearPolynomialTrait;
     use sumcheck::non_interactive_sumcheck::Sumcheck;
 
     use super::{GKRProof, GKR};
@@ -211,6 +224,7 @@ mod test {
     //              /   \   /   \     /   \
     //              5   2   3   4    9     8
 
+    #[traced_test]
     #[test]
     fn test_gkr_proof() {
         let circuit = create_circuit();
@@ -224,8 +238,7 @@ mod test {
             Fq::from(8),
         ];
 
-        let gkr_proof: GKRProof<Fq> = GKR::prove(circuit.clone(), circuit_input.clone());
-        dbg!("Proving");
+        let gkr_proof: GKRProof<Fq> = GKR::prove(&circuit, &circuit_input);
 
         let verifier = GKR::verify(circuit_input, gkr_proof, circuit).unwrap();
 
@@ -244,7 +257,7 @@ mod test {
             Fq::from(8),
         ];
 
-        let circuit_eval = circuit.evaluate(circuit_input);
+        let circuit_eval = circuit.evaluate(&circuit_input);
 
         let [add_i, mul_i] = circuit.layer_mle(2);
 

@@ -1,7 +1,8 @@
 use ark_poly::{DenseMultilinearExtension, MultilinearExtension};
 use criterion::{criterion_group, criterion_main, Criterion};
 use polynomials::multilinear_polynomial::{
-    MultilinearMonomial, MultilinearPolynomial, MultilinearPolynomialTrait,
+    coef_form::{MultilinearMonomial, MultilinearPolynomial},
+    traits::MultilinearPolynomialTrait,
 };
 
 use std::vec;

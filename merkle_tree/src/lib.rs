@@ -108,12 +108,11 @@ impl MerkleTree {
     // Should this take the index or the leaf?
     pub fn get_proof(&self, index: usize) -> Vec<[u8; 32]> {
         let mut res: Vec<[u8; 32]> = vec![];
-        let tree_depth= self.tree_depth();
+        let tree_depth = self.tree_depth();
         let mut current_index = index;
         res.push(self.tree[tree_depth - 1][get_sibling_index(current_index)]);
 
         for i in (1..tree_depth - 1).rev() {
-
             let parent_index = get_parent_index(current_index);
             let parent_sibling = get_sibling_index(parent_index);
             res.push(self.tree[i][parent_sibling]);
@@ -126,10 +125,19 @@ impl MerkleTree {
     fn tree_depth(&self) -> usize {
         self.tree.len()
     }
+
+    pub fn get_leaves(&self) -> Vec<[u8; 32]> {
+        self.tree[self.tree.len() - 1].clone()
+    }
+
+    pub fn get_leaf_at_index(&self, index: u64) -> [u8; 32] {
+        let leaves = self.get_leaves();
+        leaves[index as usize]
+    }
 }
 
 // Verify
-pub fn verify_proof<H: Hasher, T>(
+pub fn verify_proof<H: Hasher>(
     root_hash: [u8; 32],
     index: usize,
     leaf: &[u8],
@@ -141,15 +149,11 @@ pub fn verify_proof<H: Hasher, T>(
     for i in (0..proof.len()).rev() {
         let mut hasher = H::new();
         if current_index % 2 == 0 {
-            dbg!(&current_index);
             leaf_hash = hasher.hash_two_leaves(&leaf_hash, &proof[i]);
             current_index = get_parent_index(current_index);
-            dbg!(&current_index);
         } else {
-            dbg!(&current_index);
             leaf_hash = hasher.hash_two_leaves(&proof[i], &leaf_hash);
             current_index = get_parent_index(current_index);
-            dbg!(&current_index);
         };
     }
     root_hash == leaf_hash
@@ -160,7 +164,6 @@ fn get_parent_index(index: usize) -> usize {
 }
 
 fn get_sibling_index(index: usize) -> usize {
-
     if index % 2 == 0 {
         index + 1
     } else {
@@ -168,10 +171,8 @@ fn get_sibling_index(index: usize) -> usize {
     }
 }
 
-
-
-
-
+// TODO
+// Implement batch commitment, batch proof generation and batch verification
 
 #[cfg(test)]
 pub mod test {
@@ -243,13 +244,16 @@ pub mod test {
         let one_hash = KeccakHasher::new().hash(1_i32.to_be_bytes().as_slice());
         let two_hash = KeccakHasher::new().hash(2_i32.to_be_bytes().as_slice());
 
-        assert!(proof[proof.len() - 2] == KeccakHasher::new().hash_two_leaves(&one_hash, &two_hash));
-
+        assert!(
+            proof[proof.len() - 2] == KeccakHasher::new().hash_two_leaves(&one_hash, &two_hash)
+        );
     }
 
     #[test]
     pub fn test_proof_and_verify() {
-        let array = (1..300).into_iter().map(|val| val)
+        let array = (1..300)
+            .into_iter()
+            .map(|val| val)
             .into_iter()
             .map(|val: i32| val.to_be_bytes().to_vec())
             .collect();
@@ -258,11 +262,14 @@ pub mod test {
 
         let proof = merkle_tree.get_proof(2);
 
-        assert!(verify_proof::<KeccakHasher, i32>(
-            merkle_tree.get_root().unwrap(),
-            2,
-            3_i32.to_be_bytes().as_slice(),
-            proof
-        ), "Invalid proof");
+        assert!(
+            verify_proof::<KeccakHasher>(
+                merkle_tree.get_root().unwrap(),
+                2,
+                3_i32.to_be_bytes().as_slice(),
+                proof
+            ),
+            "Invalid proof"
+        );
     }
 }
