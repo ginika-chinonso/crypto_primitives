@@ -3,7 +3,8 @@ use rand::Rng;
 use sha3::{Digest, Keccak256};
 
 use polynomials::{
-    multilinear_polynomial::MultilinearPolynomialTrait, univariate_polynomial::UnivariatePolynomial,
+    multilinear_polynomial::traits::MultilinearPolynomialTrait,
+    univariate_polynomial::UnivariatePolynomial,
 };
 
 pub struct Transcript {

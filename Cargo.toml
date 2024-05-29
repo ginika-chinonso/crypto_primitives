@@ -1,4 +1,4 @@
-workspace = { members = [ "circom_gkr", "elliptic_curves", "fiat_shamir_transcript", "fields", "gkr", "polynomials", "reed_solomon_fingerprinting", "sumcheck", "utils"] }
+workspace = { members = [ "blind_auction", "elliptic_curves", "fiat_shamir_transcript", "fields", "gkr", "keccak", "kzg", "merkle_tree", "polynomials", "reed_solomon_fingerprinting", "stark_protocol", "sumcheck", "utils"] }
 [package]
 name = "crypto_primitives"
 version = "0.1.0"
@@ -9,7 +9,7 @@ edition = "2021"
 [dependencies]
 ark-ff = "0.4.2"
 ark-poly = "0.4.2"
-polynomials = {path = "polynomials"}
+polynomials = { version = "0.1.0", path = "polynomials" }
 
 
 [dev-dependencies]
@@ -23,3 +23,6 @@ harness = false
 [[bench]]
 name = "multilinear_poly"
 harness = false
+
+[profile.release]
+debug = true

@@ -1,5 +1,5 @@
 use ark_ff::PrimeField;
-use polynomials::multilinear_polynomial::{MultilinearMonomial, MultilinearPolynomial};
+use polynomials::multilinear_polynomial::coef_form::{MultilinearMonomial, MultilinearPolynomial};
 
 // Get padded binary string of a decimal number
 pub fn get_binary_string(index: usize, max_bit_count: usize) -> String {
