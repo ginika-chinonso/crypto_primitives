@@ -149,27 +149,27 @@ impl<F: PrimeField> Add for MLE<F> {
 // impl<F: PrimeField> Mul for MLE<F> {
 //     type Output = MLE<F>;
 
-    // This is wrong
-    // Element wise multiplication doesnt work for eval form
-    // fn mul(self, rhs: Self) -> Self::Output {
-    //     assert!(
-    //         self.val.len() == rhs.val.len(),
-    //         "lhs and rhs must have the same number of evaluations"
-    //     );
+// This is wrong
+// Element wise multiplication doesnt work for eval form
+// fn mul(self, rhs: Self) -> Self::Output {
+//     assert!(
+//         self.val.len() == rhs.val.len(),
+//         "lhs and rhs must have the same number of evaluations"
+//     );
 
-    //     assert!(
-    //         self.val.len().is_power_of_two(),
-    //         "Number of evaluations must be a power of two"
-    //     );
+//     assert!(
+//         self.val.len().is_power_of_two(),
+//         "Number of evaluations must be a power of two"
+//     );
 
-    //     let mut res = vec![];
+//     let mut res = vec![];
 
-    //     for i in 0..self.val.len() {
-    //         res.push(self.val[i] * rhs.val[i]);
-    //     }
+//     for i in 0..self.val.len() {
+//         res.push(self.val[i] * rhs.val[i]);
+//     }
 
-    //     Self::new(&res)
-    // }
+//     Self::new(&res)
+// }
 // }
 
 #[cfg(test)]
@@ -295,11 +295,7 @@ mod tests {
         // evaluate poly at a = 3, b = 2 and c = 5
         let res = poly.evaluate(&vec![(1, Fq::from(3)), (3, Fq::from(9)), (2, Fq::from(2))]);
 
-        assert!(
-            dbg!(res)
-                == Fq::from(162),
-            "Incorrect evaluation"
-        );
+        assert!(dbg!(res) == Fq::from(162), "Incorrect evaluation");
     }
 
     #[test]
@@ -321,7 +317,6 @@ mod tests {
             "Incorrect evaluation: Conversion failed"
         );
     }
-
 
     // #[test]
     // fn test_eval_form_multiplication() {

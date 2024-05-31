@@ -315,10 +315,7 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
             }
         }
         res = res.simplify();
-        assert!(
-            res.terms.len() <= 1,
-            "All variables should be evaluated"
-        );
+        assert!(res.terms.len() <= 1, "All variables should be evaluated");
         if res.is_zero() {
             return F::zero();
         }

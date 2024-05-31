@@ -114,11 +114,10 @@ impl<F: PrimeField> Mul for UnivariatePolynomial<F> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
-
         if self.coefficients.is_empty() || rhs.coefficients.is_empty() {
             return UnivariatePolynomial::new(vec![]);
         }
-        
+
         let mut res_array = vec![F::zero(); self.coefficients.len() + rhs.coefficients.len() - 1];
 
         let mut i = 0;
