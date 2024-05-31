@@ -15,6 +15,8 @@ use utils::{check_bit, get_binary_string};
 
 #[derive(Debug, Clone, CanonicalSerialize)]
 pub struct Circuit {
+    // Layer at index zero is the output layer
+    // Layer at index depth is the input layer
     pub layers: Vec<Layer>,
     pub depth: usize,
 }

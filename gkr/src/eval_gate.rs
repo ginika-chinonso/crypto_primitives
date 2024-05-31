@@ -13,7 +13,7 @@ use polynomials::{
     },
     univariate_polynomial::UnivariatePolynomial,
 };
-use tracing::info;
+// use tracing::info;
 use utils::get_binary_string;
 
 /// Evalgate is eqivalent to f(b, c)
@@ -47,8 +47,8 @@ impl<F: PrimeField> EvalGate<F> {
 
 impl<F: PrimeField> MultilinearPolynomialTrait<F> for EvalGate<F> {
     fn partial_eval(&self, x: &Vec<(usize, F)>) -> EvalGate<F> {
-        let start = Instant::now();
-        info!("Starting eval gate partial evaluation");
+        // let start = Instant::now();
+        // info!("Starting eval gate partial evaluation");
 
         let bnc = x.iter().fold(vec![vec![]; 2], |mut acc, (index, ele)| {
             if *index < self.w_b_num_of_vars() {
@@ -107,15 +107,15 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for EvalGate<F> {
                 acc.push(poly.partial_eval(&eval_domain).relabel());
                 acc
             });
-        let duration = start.elapsed().as_millis();
-        info!("Finished eval gate partial evaluation: {}", duration);
+        // let duration = start.elapsed().as_millis();
+        // info!("Finished eval gate partial evaluation: {}", duration);
 
         EvalGate::new(&self.r.clone(), &add_i_mle, &mul_i_mle, &w_b_mle, &w_c_mle)
     }
 
     fn evaluate(&self, x: &Vec<(usize, F)>) -> F {
-        let start = Instant::now();
-        info!("Starting eval gate evaluation");
+        // let start = Instant::now();
+        // info!("Starting eval gate evaluation");
 
         let (b, c) = x.split_at(self.w_b_num_of_vars());
 
@@ -164,8 +164,8 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for EvalGate<F> {
 
             res += add_result + mul_result;
         }
-        let duration = start.elapsed().as_millis();
-        info!("Finished eval gate evaluation: {}", duration);
+        // let duration = start.elapsed().as_millis();
+        // info!("Finished eval gate evaluation: {}", duration);
         res
     }
 
@@ -260,11 +260,11 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for EvalGate<F> {
 
     // Evaluates the sum over the boolean hypercube and returns the sum
     fn sum_over_the_boolean_hypercube(&self) -> F {
-        info!("Summing eval gate over the boolean hypercube");
-        let start = Instant::now();
+        // info!("Summing eval gate over the boolean hypercube");
+        // let start = Instant::now();
         let mut res = F::zero();
         if self.number_of_vars() == 0 {
-            return F::zero();
+            return res;
         };
         let vars_len = self.number_of_vars();
         for i in 0..2_usize.pow(vars_len as u32) {
@@ -274,19 +274,19 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for EvalGate<F> {
                 .map(|var| if var == '0' { F::zero() } else { F::one() })
                 .collect();
             let eval_domain = boolean_vec.into_iter().enumerate().collect();
-            res += self.evaluate(&eval_domain);
+            res += dbg!(self.evaluate(&eval_domain));
         }
-        let duration = start.elapsed().as_millis();
-        info!(
-            "Finished summing eval gate over the boolean hypercube: {}ms",
-            duration
-        );
+        // let duration = start.elapsed().as_millis();
+        // info!(
+        //     "Finished summing eval gate over the boolean hypercube: {}ms",
+        //     duration
+        // );
         res
     }
 
     fn to_univariate(&self) -> Result<UnivariatePolynomial<F>, String> {
         assert!(
-            self.number_of_vars() == 1,
+            self.number_of_vars() <= 1,
             "Number of variables should be 1"
         );
 
@@ -346,19 +346,19 @@ impl<F: PrimeField> EvalGate<F> {
 impl<F: PrimeField> Display for EvalGate<F> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for r in &self.r {
-            writeln!(f, "{}", r)?
+            writeln!(f, "r: {}", r)?
         }
         for a_mle in &self.add_i_mle {
-            writeln!(f, "{}", a_mle)?
+            writeln!(f, "a_mle: {}", a_mle)?
         }
         for m_mle in &self.mul_i_mle {
-            writeln!(f, "{}", m_mle)?
+            writeln!(f, "m_mle: {}", m_mle)?
         }
         for wb_mle in &self.w_b_mle {
-            writeln!(f, "{}", wb_mle)?
+            writeln!(f, "wb_mle: {}", wb_mle)?
         }
         for wc_mle in &self.w_c_mle {
-            writeln!(f, "{}", wc_mle)?
+            writeln!(f, "wc_mle: {}", wc_mle)?
         }
         Ok(())
     }
@@ -554,6 +554,26 @@ mod test {
             Fq::from(8),
         ]);
 
+        // Testing for index 00 of layer 2
+        // Should give 7 because 5 + 2 = 7
+        // and 7 is at index 00 of layer 2 evaluations
+        // Note: layer 0 is the output layer which is the layer with index 0
+        let [add_i_mle, mul_i_mle] = circuit.layer_mle(2);
+        let w_mle = MultilinearPolynomial::<Fq>::interpolate(&circuit_eval[3]);
+        let r = vec![Fq::from(0), Fq::from(0)];
+        let eval_gate = EvalGate::new(
+            &r,
+            &vec![add_i_mle],
+            &vec![mul_i_mle],
+            &vec![w_mle.clone()],
+            &vec![w_mle],
+        );
+        let sum_over_the_boolean_hypercube = eval_gate.sum_over_the_boolean_hypercube();
+        assert!(sum_over_the_boolean_hypercube == Fq::from(7));
+
+        // Testing for index 01 of layer 2
+        // Should give 12 because 4 * 3 = 12
+        // and 12 is at index 01 of layer 2 evaluations
         let [add_i_mle, mul_i_mle] = circuit.layer_mle(2);
         let w_mle = MultilinearPolynomial::<Fq>::interpolate(&circuit_eval[3]);
         let r = vec![Fq::from(0), Fq::from(1)];
@@ -566,5 +586,21 @@ mod test {
         );
         let sum_over_the_boolean_hypercube = eval_gate.sum_over_the_boolean_hypercube();
         assert!(sum_over_the_boolean_hypercube == Fq::from(12));
+
+        // Testing for index 10 of layer 2
+        // Should give 17 because 9 + 8 = 17
+        // and 17 is at index 10 of layer 2 evaluations
+        let [add_i_mle, mul_i_mle] = circuit.layer_mle(2);
+        let w_mle = MultilinearPolynomial::<Fq>::interpolate(&circuit_eval[3]);
+        let r = vec![Fq::from(1), Fq::from(0)];
+        let eval_gate = EvalGate::new(
+            &r,
+            &vec![add_i_mle],
+            &vec![mul_i_mle],
+            &vec![w_mle.clone()],
+            &vec![w_mle],
+        );
+        let sum_over_the_boolean_hypercube = eval_gate.sum_over_the_boolean_hypercube();
+        assert!(sum_over_the_boolean_hypercube == Fq::from(17));
     }
 }
