@@ -107,10 +107,7 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
     // Add like terms in a multilinear polynomial
     pub fn simplify(&self) -> MultilinearPolynomial<F> {
         if self.is_zero() {
-            return MultilinearPolynomial::new(vec![MultilinearMonomial::new(
-                F::zero(),
-                vec![false],
-            )]);
+            return MultilinearPolynomial::new(vec![]);
         }
 
         let mut terms_map = BTreeMap::<usize, (F, Vec<bool>)>::new();
@@ -147,10 +144,7 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
         }
 
         if res.is_zero() {
-            return MultilinearPolynomial::new(vec![MultilinearMonomial::new(
-                F::zero(),
-                self.terms[0].vars.clone(),
-            )]);
+            return MultilinearPolynomial::new(vec![]);
         }
 
         res.pad_vars(num_of_vars)
@@ -165,14 +159,17 @@ impl<F: PrimeField> MultilinearPolynomial<F> {
 
     // Returns true of polynomial is a zero polynomial
     pub fn is_zero(&self) -> bool {
-        // self.terms.len() == 0
         let mut res = true;
-        for term in &self.terms {
-            if term.coefficient.is_zero() {
-                continue;
-            } else {
-                res = false;
-                return res;
+        if self.terms.len() == 0 {
+            return res;
+        } else {
+            for term in &self.terms {
+                if term.coefficient.is_zero() {
+                    continue;
+                } else {
+                    res = false;
+                    return res;
+                }
             }
         }
         res
@@ -317,13 +314,15 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MultilinearPolynomial<F> {
                 };
             }
         }
-        // dbg!(res.simplify().terms.len());
-        // dbg!(res.simplify().terms);
+        res = res.simplify();
         assert!(
-            res.simplify().terms.len() == 1,
+            res.terms.len() <= 1,
             "All variables should be evaluated"
         );
-        res.simplify().terms[0].coefficient
+        if res.is_zero() {
+            return F::zero();
+        }
+        res.terms[0].coefficient
     }
 
     fn number_of_vars(&self) -> usize {
