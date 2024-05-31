@@ -128,12 +128,8 @@ impl Sumcheck {
             let verifier_check =
                 proof.rounds_poly[i].evaluate(F::zero()) + proof.rounds_poly[i].evaluate(F::one());
 
-            // dbg!(&verifier_check);
-            // dbg!(&i);
-            // dbg!(&proof.sum);
             if verifier_check != proof.sum {
-                // dbg!(&proof.rounds_poly);
-                return Err("Invalid proof".to_string());
+                return Err("Invalid sumcheck proof".to_string());
             };
 
             transcript.add_univariate_poly(&proof.rounds_poly[i]);
@@ -159,13 +155,8 @@ mod tests {
 
     use super::Sumcheck;
 
-    use ark_ff::{Fp64, MontBackend, MontConfig};
-
-    #[derive(MontConfig)]
-    #[modulus = "17"]
-    #[generator = "3"]
-    pub struct FqConfig;
-    pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
+    use ark_bls12_381::Fr;
+    type Fq = Fr;
 
     #[traced_test]
     #[test]

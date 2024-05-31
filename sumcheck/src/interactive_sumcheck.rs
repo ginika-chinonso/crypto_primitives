@@ -10,17 +10,13 @@ pub struct Channel<F: PrimeField> {
 #[cfg(test)]
 mod tests {
     use super::super::prover::Prover;
-    use ark_ff::{Fp64, MontBackend, MontConfig};
     use polynomials::{
         multilinear_polynomial::coef_form::{MultilinearMonomial, MultilinearPolynomial},
         univariate_polynomial::UnivariatePolynomial,
     };
 
-    #[derive(MontConfig)]
-    #[modulus = "17"]
-    #[generator = "3"]
-    pub struct FqConfig;
-    pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
+    use ark_bls12_381::Fr;
+    type Fq = Fr;
 
     // #[test]
     // fn test_sumcheck() {

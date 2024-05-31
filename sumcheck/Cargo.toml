@@ -16,4 +16,5 @@ tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 tracing-test = "0.2.4"
 ark-serialize = { version = "0.4.2", features = ["derive"] }
+ark-bls12-381 = "0.4.0"
 
