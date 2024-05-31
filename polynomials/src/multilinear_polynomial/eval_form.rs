@@ -4,10 +4,11 @@ use crate::{
 };
 use ark_ff::{BigInteger, PrimeField};
 use ark_serialize::*;
-use std::ops::{Add, Mul};
+use std::ops::Add;
 
 #[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct MLE<F: PrimeField> {
+    // Variables are not zero indexed
     pub num_of_vars: usize,
     // The val vector contains the evaluation of the mle over the boolean hypercube
     pub val: Vec<F>,
@@ -145,29 +146,31 @@ impl<F: PrimeField> Add for MLE<F> {
     }
 }
 
-impl<F: PrimeField> Mul for MLE<F> {
-    type Output = MLE<F>;
+// impl<F: PrimeField> Mul for MLE<F> {
+//     type Output = MLE<F>;
 
-    fn mul(self, rhs: Self) -> Self::Output {
-        assert!(
-            self.val.len() == rhs.val.len(),
-            "lhs and rhs must have the same number of evaluations"
-        );
+// This is wrong
+// Element wise multiplication doesnt work for eval form
+// fn mul(self, rhs: Self) -> Self::Output {
+//     assert!(
+//         self.val.len() == rhs.val.len(),
+//         "lhs and rhs must have the same number of evaluations"
+//     );
 
-        assert!(
-            self.val.len().is_power_of_two(),
-            "Number of evaluations must be a power of two"
-        );
+//     assert!(
+//         self.val.len().is_power_of_two(),
+//         "Number of evaluations must be a power of two"
+//     );
 
-        let mut res = vec![];
+//     let mut res = vec![];
 
-        for i in 0..self.val.len() {
-            res.push(self.val[i] * rhs.val[i]);
-        }
+//     for i in 0..self.val.len() {
+//         res.push(self.val[i] * rhs.val[i]);
+//     }
 
-        Self::new(&res)
-    }
-}
+//     Self::new(&res)
+// }
+// }
 
 #[cfg(test)]
 mod tests {
@@ -272,44 +275,6 @@ mod tests {
     }
 
     #[test]
-    fn test_eval_form_multiplication() {
-        let val1 = vec![
-            Fq::from(9),
-            Fq::from(12),
-            Fq::from(3),
-            Fq::from(15),
-            Fq::from(24),
-            Fq::from(1),
-            Fq::from(7),
-            Fq::from(9),
-        ];
-
-        let val2 = vec![
-            Fq::from(1),
-            Fq::from(2),
-            Fq::from(3),
-            Fq::from(4),
-            Fq::from(5),
-            Fq::from(6),
-            Fq::from(7),
-            Fq::from(8),
-        ];
-
-        let poly1: MLE<ark_ff::Fp<MontBackend<FqConfig, 1>, 1>> = MLE::new(&val1);
-        let poly2 = MLE::new(&val2);
-
-        let res_poly = poly1.clone() * poly2.clone();
-
-        let coeff_form = MultilinearPolynomial::interpolate(&res_poly.val);
-
-        assert!(
-            poly1.val[3] * poly2.val[3]
-                == coeff_form.evaluate(&vec![(0, Fq::from(0)), (1, Fq::from(1)), (2, Fq::from(1))]),
-            "Evaluations do not match"
-        );
-    }
-
-    #[test]
     pub fn test_evaluate_eval_form() {
         let val = vec![
             Fq::from(1),
@@ -330,18 +295,7 @@ mod tests {
         // evaluate poly at a = 3, b = 2 and c = 5
         let res = poly.evaluate(&vec![(1, Fq::from(3)), (3, Fq::from(9)), (2, Fq::from(2))]);
 
-        let coeff_poly = MultilinearPolynomial::interpolate(&val);
-        println!("{coeff_poly}");
-
-        assert!(
-            dbg!(res)
-                == dbg!(coeff_poly.evaluate(&vec![
-                    (0, Fq::from(3)),
-                    (1, Fq::from(2)),
-                    (2, Fq::from(9))
-                ])),
-            "Incorrect evaluation"
-        );
+        assert!(dbg!(res) == Fq::from(162), "Incorrect evaluation");
     }
 
     #[test]
@@ -363,4 +317,42 @@ mod tests {
             "Incorrect evaluation: Conversion failed"
         );
     }
+
+    // #[test]
+    // fn test_eval_form_multiplication() {
+    //     // This is wrong
+    //     // The degree of the polynomial changes after multiplication
+    //     let val1 = vec![
+    //         Fq::from(9),
+    //         Fq::from(12),
+    //         Fq::from(3),
+    //         Fq::from(15),
+    //         Fq::from(24),
+    //         Fq::from(1),
+    //         Fq::from(7),
+    //         Fq::from(9),
+    //     ];
+
+    //     let val2 = vec![
+    //         Fq::from(1),
+    //         Fq::from(2),
+    //         Fq::from(3),
+    //         Fq::from(4),
+    //         Fq::from(5),
+    //         Fq::from(6),
+    //         Fq::from(7),
+    //         Fq::from(8),
+    //     ];
+
+    //     let poly1: MLE<ark_ff::Fp<MontBackend<FqConfig, 1>, 1>> = MLE::new(&val1);
+    //     let poly2: MLE<ark_ff::Fp<MontBackend<FqConfig, 1>, 1>> = MLE::new(&val2);
+
+    //     let res_poly = poly1.clone() * poly2.clone();
+
+    //     assert!(
+    //         poly1.evaluate(&vec![(1, Fq::from(38)), (2, Fq::from(64)), (3, Fq::from(90))]) * poly2.evaluate(&vec![(1, Fq::from(38)), (2, Fq::from(64)), (3, Fq::from(90))])
+    //             == res_poly.evaluate(&vec![(1, Fq::from(38)), (2, Fq::from(64)), (3, Fq::from(90))]),
+    //         "Evaluations do not match"
+    //     );
+    // }
 }
