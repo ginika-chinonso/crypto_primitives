@@ -54,7 +54,6 @@ pub fn q_function<F: PrimeField>(
 mod test {
 
     use super::eval_l;
-    use ark_ff::{Fp64, MontBackend, MontConfig};
     use polynomials::{
         multilinear_polynomial::{
             coef_form::{MultilinearMonomial, MultilinearPolynomial},
@@ -65,11 +64,8 @@ mod test {
 
     use super::{l_function, q_function};
 
-    #[derive(MontConfig)]
-    #[modulus = "17"]
-    #[generator = "3"]
-    pub struct FqConfig;
-    pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
+    use ark_bls12_381::Fr;
+    pub type Fq = Fr;
 
     #[test]
     fn test_l_function() {

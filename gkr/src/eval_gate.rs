@@ -1,7 +1,7 @@
 use std::{
     fmt::{Debug, Display},
     ops::Add,
-    time::Instant,
+    // time::Instant,
 };
 
 use ark_ff::{BigInteger, PrimeField};
@@ -395,7 +395,6 @@ impl<F: PrimeField> Add for EvalGate<F> {
 
 #[cfg(test)]
 mod test {
-    use ark_ff::{Fp64, MontBackend, MontConfig};
     use tracing_test::traced_test;
 
     use crate::circuit::{Circuit, Layer, Wire};
@@ -405,11 +404,8 @@ mod test {
 
     use super::EvalGate;
 
-    #[derive(MontConfig)]
-    #[modulus = "17"]
-    #[generator = "3"]
-    pub struct FqConfig;
-    pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
+    use ark_bls12_381::Fr;
+    pub type Fq = Fr;
 
     fn create_circuit() -> Circuit {
         let layer0 = Layer::new(vec![], vec![Wire::new(0, 0, 1)]);
@@ -423,6 +419,17 @@ mod test {
 
         new_circuit
     }
+
+    //                          0
+    //                          *
+    //                      /       \
+    //                 2mod(17)   0mod(17)
+    //                    +         *
+    //                 /     \   /      \
+    //                7       12      0mod(17)
+    //                +       *         +
+    //              /   \   /   \     /   \
+    //              5   2   3   4    9     8
 
     #[test]
     fn test_eval_gate_eval() {
@@ -510,7 +517,7 @@ mod test {
 
         let [add_i_mle, mul_i_mle] = circuit.layer_mle(2);
 
-        let r: Vec<ark_ff::Fp<MontBackend<FqConfig, 1>, 1>> = vec![Fq::from(0), Fq::from(1)];
+        let r: Vec<Fq> = vec![Fq::from(0), Fq::from(1)];
         let w_mle = MultilinearPolynomial::<Fq>::interpolate(&circuit_eval[3]);
 
         let eval_gate = EvalGate::new(
@@ -602,5 +609,38 @@ mod test {
         );
         let sum_over_the_boolean_hypercube = eval_gate.sum_over_the_boolean_hypercube();
         assert!(sum_over_the_boolean_hypercube == Fq::from(17));
+    }
+
+    #[test]
+    pub fn test_eval_gate_number_of_variables() {
+        let circuit = create_circuit();
+
+        let circuit_eval = circuit.evaluate(&vec![
+            Fq::from(5),
+            Fq::from(2),
+            Fq::from(3),
+            Fq::from(4),
+            Fq::from(9),
+            Fq::from(8),
+        ]);
+
+        // Testing for index 00 of layer 2
+        // Should give 7 because 5 + 2 = 7
+        // and 7 is at index 00 of layer 2 evaluations
+        // Note: layer 0 is the output layer which is the layer with index 0
+        let [add_i_mle, mul_i_mle] = circuit.layer_mle(2);
+        let w_mle = MultilinearPolynomial::<Fq>::interpolate(&circuit_eval[3]);
+        let r = vec![Fq::from(0), Fq::from(0)];
+        let eval_gate = EvalGate::new(
+            &r,
+            &vec![add_i_mle],
+            &vec![mul_i_mle],
+            &vec![w_mle.clone()],
+            &vec![w_mle],
+        );
+
+        // number of variables for w_b_mle and w_c_mle of eval gate should be 3
+        // because the input values are at index 000 and 001
+        assert!(eval_gate.number_of_vars() == 6, "Wrong number of variables");
     }
 }
