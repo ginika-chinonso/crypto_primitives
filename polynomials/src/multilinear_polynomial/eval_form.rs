@@ -174,17 +174,13 @@ impl<F: PrimeField> Add for MLE<F> {
 
 #[cfg(test)]
 mod tests {
-    use ark_ff::{Fp64, MontBackend, MontConfig};
+    use ark_bn254::Fr;
 
     use crate::multilinear_polynomial::{
         coef_form::MultilinearPolynomial, eval_form::MLE, traits::MultilinearPolynomialTrait,
     };
 
-    #[derive(MontConfig)]
-    #[modulus = "17"]
-    #[generator = "3"]
-    pub struct FqConfig;
-    pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
+    pub type Fq = Fr;
 
     #[test]
     pub fn test_partial_eval_eval_form() {
@@ -261,7 +257,7 @@ mod tests {
             Fq::from(8),
         ];
 
-        let poly1: MLE<ark_ff::Fp<MontBackend<FqConfig, 1>, 1>> = MLE::new(&val1);
+        let poly1: MLE<Fq> = MLE::new(&val1);
         let poly2 = MLE::new(&val2);
 
         let res_poly = poly1.clone() + poly2.clone();
@@ -276,15 +272,16 @@ mod tests {
 
     #[test]
     pub fn test_evaluate_eval_form() {
+        // Polynomial in consideration = 2ab + 3bc
         let val = vec![
-            Fq::from(1),
-            Fq::from(2),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
             Fq::from(3),
-            Fq::from(4),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
             Fq::from(5),
-            Fq::from(6),
-            Fq::from(7),
-            Fq::from(8),
         ];
 
         let poly = MLE::new(&val);
@@ -293,9 +290,9 @@ mod tests {
         assert!(poly.num_of_vars == 3, "Number of vars for poly should be 3");
 
         // evaluate poly at a = 3, b = 2 and c = 5
-        let res = poly.evaluate(&vec![(1, Fq::from(3)), (3, Fq::from(9)), (2, Fq::from(2))]);
+        let res = poly.evaluate(&vec![(1, Fq::from(3)), (3, Fq::from(5)), (2, Fq::from(2))]);
 
-        assert!(dbg!(res) == Fq::from(162), "Incorrect evaluation");
+        assert!(dbg!(res) == Fq::from(42), "Incorrect evaluation");
     }
 
     #[test]
