@@ -23,6 +23,45 @@ impl<F: PrimeField> MLE<F> {
             val: val.to_vec(),
         }
     }
+
+    // Indexes are not zero indexed
+    pub fn add_variable_at_index(&self, indexes: Vec<usize>) -> MLE<F> {
+        if indexes.is_empty() {
+            return self.clone();
+        }
+
+        let mut new_self = self.val.clone();
+        
+        for i in 0..indexes.len() {
+
+            let mut res = vec![F::zero(); new_self.len() * 2];
+
+            let mut shift = 2_usize.pow((self.num_of_vars + i + 1) as u32) / 2_usize.pow(indexes[i] as u32);
+            let mut index = 0;
+
+            for j in 0..new_self.len() {
+                if shift == 0 {
+                    shift = 2_usize.pow((self.num_of_vars + i + 1) as u32) / 2_usize.pow(indexes[i] as u32);
+                    index += shift;
+                }
+
+                dbg!(&index);
+                dbg!(&get_sib(index, self.num_of_vars + i + 1, indexes[i]));
+                dbg!(&new_self[j]);
+                dbg!(&shift);
+
+                res[index] = new_self[j];
+                res[get_sib(index, self.num_of_vars + i + 1, indexes[i])] = new_self[j];
+
+                shift -= 1;
+                index += 1;
+            }
+
+            new_self = res.clone();
+        }
+
+        MLE::new(&new_self)
+    }
 }
 
 impl<F: PrimeField> MultilinearPolynomialTrait<F> for MLE<F> {
@@ -145,6 +184,7 @@ impl<F: PrimeField> Add for MLE<F> {
         Self::new(&res)
     }
 }
+
 
 // impl<F: PrimeField> Mul for MLE<F> {
 //     type Output = MLE<F>;
@@ -352,4 +392,98 @@ mod tests {
     //         "Evaluations do not match"
     //     );
     // }
+
+    #[test]
+    pub fn test_add_variable_at_index_1() {
+        // Polynomial in consideration: 2ab
+        let val = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+        ];
+
+        let poly = MLE::new(&val);
+
+        // add a new variable to the front to get 2abc where a is the new variable
+
+        // Note that indexes are not zero indexed
+        let new_poly = poly.add_variable_at_index(vec![1]);
+
+        dbg!(&new_poly);
+
+        assert!(new_poly.val == vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+        ], "Failed to add variable");
+    }
+
+
+    #[test]
+    pub fn test_add_variable_at_index_2() {
+        // Polynomial in consideration: 2ab
+        let val = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+        ];
+
+        let poly = MLE::new(&val);
+
+        // add a new variable at the middle to get 2abc where b is the new variable
+
+        // Note that indexes are not zero indexed
+        let new_poly = poly.add_variable_at_index(vec![2]);
+
+        dbg!(&new_poly);
+
+        assert!(new_poly.val == vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(2),
+        ], "Failed to add variable");
+    }
+
+    #[test]
+    pub fn test_add_variable_at_index_3() {
+        // Polynomial in consideration: 2ab
+        let val = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+        ];
+
+        let poly = MLE::new(&val);
+
+        // add a new variable at the end to get 2abc where c is the new variable
+
+        // Note that indexes are not zero indexed
+        let new_poly = poly.add_variable_at_index(vec![3]);
+
+        dbg!(&new_poly);
+
+        assert!(new_poly.val == vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
+        ], "Failed to add variable");
+    }
 }
