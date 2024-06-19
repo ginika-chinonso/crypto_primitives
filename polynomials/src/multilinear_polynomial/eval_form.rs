@@ -25,10 +25,12 @@ impl<F: PrimeField> MLE<F> {
     }
 
     // Indexes are not zero indexed
-    pub fn add_variable_at_index(&self, indexes: Vec<usize>) -> MLE<F> {
+    pub fn add_variable_at_index(&self, indexes: &mut Vec<usize>) -> MLE<F> {
         if indexes.is_empty() {
             return self.clone();
         }
+
+        indexes.sort();
 
         let mut new_self = self.val.clone();
         
@@ -408,7 +410,7 @@ mod tests {
         // add a new variable to the front to get 2abc where a is the new variable
 
         // Note that indexes are not zero indexed
-        let new_poly = poly.add_variable_at_index(vec![1]);
+        let new_poly = poly.add_variable_at_index(&mut vec![1]);
 
         dbg!(&new_poly);
 
@@ -440,7 +442,7 @@ mod tests {
         // add a new variable at the middle to get 2abc where b is the new variable
 
         // Note that indexes are not zero indexed
-        let new_poly = poly.add_variable_at_index(vec![2]);
+        let new_poly = poly.add_variable_at_index(&mut vec![2]);
 
         dbg!(&new_poly);
 
@@ -471,11 +473,168 @@ mod tests {
         // add a new variable at the end to get 2abc where c is the new variable
 
         // Note that indexes are not zero indexed
-        let new_poly = poly.add_variable_at_index(vec![3]);
+        let new_poly = poly.add_variable_at_index(&mut vec![3]);
 
         dbg!(&new_poly);
 
         assert!(new_poly.val == vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
+        ], "Failed to add variable");
+    }
+
+    #[test]
+    pub fn test_add_variable_at_index_1_and_2() {
+        // Polynomial in consideration: 2ab
+        let val = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+        ];
+
+        let poly = MLE::new(&val);
+
+        // add a new variable at index 1 and 2 to get 2abcd where a and b are the new variable
+
+        // Note that indexes are not zero indexed
+        let new_poly = poly.add_variable_at_index(&mut vec![2, 1]);
+
+        dbg!(&new_poly);
+
+        assert!(new_poly.val == vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+        ], "Failed to add variable");
+    }
+
+    #[test]
+    pub fn test_add_variable_at_index_2_and_3() {
+        // Polynomial in consideration: 2ab
+        let val = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+        ];
+
+        let poly = MLE::new(&val);
+
+        // add a new variable at index 2 and 3 to get 2abcd where b and c are the new variables
+
+        // Note that indexes are not zero indexed
+        let new_poly = poly.add_variable_at_index(&mut vec![3, 2]);
+
+        dbg!(&new_poly);
+
+        assert!(new_poly.val == vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(2),
+        ], "Failed to add variable");
+    }
+
+    #[test]
+    pub fn test_add_variable_at_index_3_and_4() {
+        // Polynomial in consideration: 2ab
+        let val = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+        ];
+
+        let poly = MLE::new(&val);
+
+        // add a new variable at index 3 and 4 to get 2abcd where c and d are the new variables
+
+        // Note that indexes are not zero indexed
+        let new_poly = poly.add_variable_at_index(&mut vec![4, 3]);
+
+        dbg!(&new_poly);
+
+        assert!(new_poly.val == vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
+            Fq::from(2),
+            Fq::from(2),
+        ], "Failed to add variable");
+    }
+
+
+    #[test]
+    pub fn test_add_variable_at_index_1_and_4() {
+        // Polynomial in consideration: 2ab
+        let val = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+        ];
+
+        let poly = MLE::new(&val);
+
+        // add a new variable at index 1 and 4 to get 2abcd where a and d are the new variables
+
+        // Note that indexes are not zero indexed
+        let new_poly = poly.add_variable_at_index(&mut vec![4, 1]);
+
+        dbg!(&new_poly);
+
+        assert!(new_poly.val == vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
             Fq::from(0),
             Fq::from(0),
             Fq::from(0),
