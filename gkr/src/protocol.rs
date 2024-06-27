@@ -17,7 +17,7 @@ use polynomials::{
     univariate_polynomial::UnivariatePolynomial,
 };
 
-#[derive(Debug, Clone, CanonicalSerialize)]
+#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct GKRProof<F: PrimeField> {
     pub sumcheck_proofs: Vec<SumcheckProof<F>>,
     pub output: MultilinearPolynomial<F>,
@@ -182,7 +182,6 @@ impl GKR {
 
 #[cfg(test)]
 mod test {
-    use ark_ff::{Fp64, MontBackend, MontConfig};
     use tracing_test::traced_test;
 
     use crate::{
@@ -194,11 +193,8 @@ mod test {
 
     use super::{GKRProof, GKR};
 
-    #[derive(MontConfig)]
-    #[modulus = "17"]
-    #[generator = "3"]
-    pub struct FqConfig;
-    pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
+    use ark_bls12_381::Fr;
+    pub type Fq = Fr;
 
     fn create_circuit() -> Circuit {
         let layer0 = Layer::new(vec![], vec![Wire::new(0, 0, 1)]);
@@ -262,6 +258,8 @@ mod test {
         let [add_i, mul_i] = circuit.layer_mle(2);
 
         let w_3 = circuit.w_mle(circuit_eval[3].clone());
+
+        // using r to select the 01 output for layer 2
         let gate_ext = EvalGate::new(
             &vec![Fq::from(0), Fq::from(1)],
             &vec![add_i],
@@ -269,6 +267,8 @@ mod test {
             &vec![w_3.clone()],
             &vec![w_3],
         );
+
+        // checking eval gate for layer 2 on inputs 010, 011
         assert_eq!(
             Fq::from(12),
             gate_ext.evaluate(&vec![

@@ -457,15 +457,11 @@ impl<F: PrimeField> Display for MultilinearPolynomial<F> {
 /// ////////////////////////////////
 #[cfg(test)]
 mod tests {
-    use ark_ff::{Fp64, MontBackend, MontConfig};
 
     use super::{MultilinearMonomial, MultilinearPolynomial, MultilinearPolynomialTrait};
 
-    #[derive(MontConfig)]
-    #[modulus = "17"]
-    #[generator = "3"]
-    pub struct FqConfig;
-    pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
+    use ark_bls12_381::Fr;
+    pub type Fq = Fr;
 
     #[test]
     fn test_add_multilinear_same() {

@@ -5,7 +5,7 @@
 // - TODO: Implement sum over the boolean hypercube for multilinear poly
 // prevent the creation of an empty layer
 
-use ark_serialize::*;
+use serde::Serialize;
 use std::cmp::max;
 
 use ark_ff::PrimeField;
@@ -13,7 +13,7 @@ use ark_ff::PrimeField;
 use polynomials::multilinear_polynomial::coef_form::{MultilinearMonomial, MultilinearPolynomial};
 use utils::{check_bit, get_binary_string};
 
-#[derive(Debug, Clone, CanonicalSerialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Circuit {
     // Layer at index zero is the output layer
     // Layer at index depth is the input layer
@@ -142,7 +142,7 @@ impl Circuit {
 //     }
 // }
 
-#[derive(Debug, Clone, Copy, CanonicalSerialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct Wire {
     pub output: usize,
     pub left: usize,
@@ -169,7 +169,7 @@ impl Wire {
     }
 }
 
-#[derive(Debug, Clone, CanonicalSerialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Layer {
     pub add_gates: Vec<Wire>,
     pub mul_gates: Vec<Wire>,
@@ -263,18 +263,14 @@ pub fn selector_poly<F: PrimeField>(
 
 #[cfg(test)]
 pub mod test {
-    use ark_ff::{Fp64, MontBackend, MontConfig};
 
     use crate::circuit::selector_poly;
 
     use super::{Circuit, Layer, Wire};
     use polynomials::multilinear_polynomial::traits::MultilinearPolynomialTrait;
 
-    #[derive(MontConfig)]
-    #[modulus = "17"]
-    #[generator = "3"]
-    pub struct FqConfig;
-    pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
+    use ark_bls12_381::Fr;
+    pub type Fq = Fr;
 
     fn create_circuit() -> Circuit {
         let layer0 = Layer::new(vec![], vec![Wire::new(0, 0, 1)]);

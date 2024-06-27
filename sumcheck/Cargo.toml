@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ark-ff = "0.4.2"
+ark-ff = "0.4.1"
 ark-std = "0.4.0"
 polynomials = {path = "../polynomials"}
 serde = "1.0.197"
@@ -15,6 +15,6 @@ fiat_shamir_transcript = {path = "../fiat_shamir_transcript"}
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 tracing-test = "0.2.4"
-ark-serialize = { version = "0.4.2", features = ["derive"] }
+ark-serialize = { version = "0.4.1", features = ["derive"] }
 ark-bls12-381 = "0.4.0"
 
