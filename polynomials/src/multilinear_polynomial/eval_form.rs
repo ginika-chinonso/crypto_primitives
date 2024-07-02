@@ -37,14 +37,12 @@ impl<F: PrimeField> MLE<F> {
         for i in 0..indexes.len() {
             let mut res = vec![F::zero(); new_self.len() * 2];
 
-            let mut shift =
-                2_usize.pow((self.num_of_vars + i + 1) as u32) / 2_usize.pow(indexes[i] as u32);
+            let mut shift = 2_usize.pow(((self.num_of_vars + i + 1) - indexes[i]) as u32);
             let mut index = 0;
 
             for j in 0..new_self.len() {
                 if shift == 0 {
-                    shift = 2_usize.pow((self.num_of_vars + i + 1) as u32)
-                        / 2_usize.pow(indexes[i] as u32);
+                    shift = 2_usize.pow(((self.num_of_vars + i + 1) - indexes[i]) as u32);
                     index += shift;
                 }
 
@@ -60,6 +58,14 @@ impl<F: PrimeField> MLE<F> {
 
         MLE::new(&new_self)
     }
+
+    pub fn skip_one_and_sum_over_the_boolean_hypercube(&self) -> MLE<F> {
+        let val1 = self.val[0..self.val.len() / 2].iter().fold(F::zero(), |init, val| init + val);
+        let val2 = self.val[(self.val.len()/2)..].iter().fold(F::zero(), |init, val| init + val);
+
+        Self::new(&vec![val1, val2])
+    }
+
 }
 
 impl<F: PrimeField> MultilinearPolynomialTrait<F> for MLE<F> {
@@ -86,11 +92,11 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MLE<F> {
 
             assert!(var <= num_of_vars, "Variable not found");
             let mut index = 0;
-            let mut shift = 2_usize.pow(num_of_vars as u32) / 2_usize.pow(var as u32);
+            let mut shift = 2_usize.pow((num_of_vars - var) as u32);
 
             for _ in 0..(new_poly.val.len() / 2) {
                 if shift == 0 {
-                    shift = 2_usize.pow(num_of_vars as u32) / 2_usize.pow(var as u32);
+                    shift = 2_usize.pow((num_of_vars - var) as u32);
                     index += shift;
                 }
 
@@ -132,15 +138,11 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MLE<F> {
     }
 
     fn to_bytes(&self) -> Vec<u8> {
-        let mut res = Vec::new();
 
-        res.append(self.clone().num_of_vars.to_be_bytes().to_vec().as_mut());
-
-        for value in &self.val {
-            res.append(value.into_bigint().to_bytes_be().as_mut());
-        }
-
-        res
+        self.val.iter().fold(self.num_of_vars.to_be_bytes().to_vec(), |mut init, value| {
+            init.extend(value.into_bigint().to_bytes_be());
+            init
+        })
     }
 
     fn relabel(&self) -> Self {
@@ -620,5 +622,41 @@ mod tests {
                 ],
             "Failed to add variable"
         );
+    }
+
+    #[test]
+    pub fn test_skip_one_and_sum_over_the_boolean_hypercube() {
+
+        let val = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
+        ];
+
+        let poly = MLE::new(&val);
+
+        let claimed_sum = poly.sum_over_the_boolean_hypercube();
+
+        let univariate_poly = poly.skip_one_and_sum_over_the_boolean_hypercube();
+
+        assert!(univariate_poly.val == vec![
+            Fq::from(4),
+            Fq::from(4)
+        ], "Wrong univariate polynomial");
+
+        assert!(claimed_sum == univariate_poly.evaluate(&vec![(1, Fq::from(0))]) + univariate_poly.evaluate(&vec![(1, (Fq::from(1)))]), "Invalid univariate poly");
     }
 }
