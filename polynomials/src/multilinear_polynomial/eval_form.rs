@@ -60,12 +60,15 @@ impl<F: PrimeField> MLE<F> {
     }
 
     pub fn skip_one_and_sum_over_the_boolean_hypercube(&self) -> MLE<F> {
-        let val1 = self.val[0..self.val.len() / 2].iter().fold(F::zero(), |init, val| init + val);
-        let val2 = self.val[(self.val.len()/2)..].iter().fold(F::zero(), |init, val| init + val);
+        let val1 = self.val[0..self.val.len() / 2]
+            .iter()
+            .fold(F::zero(), |init, val| init + val);
+        let val2 = self.val[(self.val.len() / 2)..]
+            .iter()
+            .fold(F::zero(), |init, val| init + val);
 
         Self::new(&vec![val1, val2])
     }
-
 }
 
 impl<F: PrimeField> MultilinearPolynomialTrait<F> for MLE<F> {
@@ -138,11 +141,13 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MLE<F> {
     }
 
     fn to_bytes(&self) -> Vec<u8> {
-
-        self.val.iter().fold(self.num_of_vars.to_be_bytes().to_vec(), |mut init, value| {
-            init.extend(value.into_bigint().to_bytes_be());
-            init
-        })
+        self.val.iter().fold(
+            self.num_of_vars.to_be_bytes().to_vec(),
+            |mut init, value| {
+                init.extend(value.into_bigint().to_bytes_be());
+                init
+            },
+        )
     }
 
     fn relabel(&self) -> Self {
@@ -626,7 +631,6 @@ mod tests {
 
     #[test]
     pub fn test_skip_one_and_sum_over_the_boolean_hypercube() {
-
         let val = vec![
             Fq::from(0),
             Fq::from(0),
@@ -652,11 +656,16 @@ mod tests {
 
         let univariate_poly = poly.skip_one_and_sum_over_the_boolean_hypercube();
 
-        assert!(univariate_poly.val == vec![
-            Fq::from(4),
-            Fq::from(4)
-        ], "Wrong univariate polynomial");
+        assert!(
+            univariate_poly.val == vec![Fq::from(4), Fq::from(4)],
+            "Wrong univariate polynomial"
+        );
 
-        assert!(claimed_sum == univariate_poly.evaluate(&vec![(1, Fq::from(0))]) + univariate_poly.evaluate(&vec![(1, (Fq::from(1)))]), "Invalid univariate poly");
+        assert!(
+            claimed_sum
+                == univariate_poly.evaluate(&vec![(1, Fq::from(0))])
+                    + univariate_poly.evaluate(&vec![(1, (Fq::from(1)))]),
+            "Invalid univariate poly"
+        );
     }
 }

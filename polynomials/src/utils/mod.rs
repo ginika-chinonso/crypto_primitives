@@ -43,7 +43,7 @@ pub fn selector_to_index(selector: &[bool]) -> usize {
 }
 
 pub fn get_sib(index: usize, num_of_vars: usize, var: usize) -> usize {
-    index + (2_usize.pow(num_of_vars as u32) / 2_usize.pow(var as u32))
+    index + 2_usize.pow((num_of_vars - var) as u32)
 }
 
 pub fn pad_to_len(num: usize, len: usize) -> String {
