@@ -1,14 +1,12 @@
 #[cfg(test)]
 pub mod test {
-    use polynomials::multilinear_polynomial::eval_form::MLE;
     use ark_bn254::Fq;
+    use polynomials::multilinear_polynomial::eval_form::MLE;
 
     use crate::eval_form::{prover::Prover, verifier::Verifier};
 
-
     #[test]
     pub fn test_sumcheck_protocol() {
-        
         let val = vec![
             Fq::from(0),
             Fq::from(0),
