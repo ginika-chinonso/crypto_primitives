@@ -26,7 +26,13 @@ pub mod test {
             Fq::from(2),
         ];
 
-        let init_poly = MLE::new(&val);
+        let v = vec![val; 4096 * 32].concat();
+
+        dbg!(&v.len());
+
+        let init_poly = MLE::new(&v);
+
+        dbg!(&init_poly.num_of_vars);
 
         let proof = Prover::prove(init_poly);
 
