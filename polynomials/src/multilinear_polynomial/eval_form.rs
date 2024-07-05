@@ -16,7 +16,10 @@ pub struct MLE<F: PrimeField> {
 
 impl<F: PrimeField> MLE<F> {
     pub fn new(val: &Vec<F>) -> Self {
-        // assert!(val.len().is_power_of_two(), "Number of evaluations should be a power of two");
+        assert!(
+            val.len().is_power_of_two(),
+            "Number of evaluations should be a power of two"
+        );
         let num_of_vars = (val.len() as f64).log2().ceil() as usize;
         Self {
             num_of_vars,
@@ -348,7 +351,7 @@ mod tests {
 
     #[test]
     fn test_eval_form_to_univariate() {
-        let evaluations = vec![Fq::from(2), Fq::from(3), Fq::from(8)];
+        let evaluations = vec![Fq::from(2), Fq::from(3), Fq::from(8), Fq::from(12)];
         let eval_poly = MLE::new(&evaluations);
         let eval_poly_univariate = eval_poly.to_univariate().unwrap();
 
@@ -362,6 +365,10 @@ mod tests {
         );
         assert!(
             eval_poly_univariate.evaluate(Fq::from(2)) == Fq::from(8),
+            "Incorrect evaluation: Conversion failed"
+        );
+        assert!(
+            eval_poly_univariate.evaluate(Fq::from(3)) == Fq::from(12),
             "Incorrect evaluation: Conversion failed"
         );
     }
