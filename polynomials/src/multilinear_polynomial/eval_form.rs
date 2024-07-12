@@ -72,6 +72,23 @@ impl<F: PrimeField> MLE<F> {
 
         Self::new(&vec![val1, val2])
     }
+
+    pub fn element_wise_mul(&self, rhs: &Self) -> Self {
+        assert_eq!(
+            self.val.len(),
+            rhs.val.len(),
+            "LHS and RHS should have same number of evaluations"
+        );
+
+        let res_arr: Vec<F> = self
+            .val
+            .iter()
+            .zip(&rhs.val)
+            .map(|(lhs, rhs)| *lhs * rhs)
+            .collect();
+
+        MLE::new(&res_arr)
+    }
 }
 
 impl<F: PrimeField> MultilinearPolynomialTrait<F> for MLE<F> {
@@ -673,6 +690,25 @@ mod tests {
                 == univariate_poly.evaluate(&vec![(1, Fq::from(0))])
                     + univariate_poly.evaluate(&vec![(1, (Fq::from(1)))]),
             "Invalid univariate poly"
+        );
+    }
+
+    #[test]
+    pub fn test_element_wise_mul() {
+        let vec_1 = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)];
+
+        let vec_2 = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)];
+
+        let poly_1 = MLE::new(&vec_1);
+
+        let poly_2 = MLE::new(&vec_2);
+
+        let res_poly = poly_1.element_wise_mul(&poly_2);
+
+        assert_eq!(
+            res_poly.val,
+            vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(6),],
+            "Wrong elementwise mul result"
         );
     }
 }
