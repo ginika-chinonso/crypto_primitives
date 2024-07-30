@@ -7,14 +7,14 @@ use ark_serialize::*;
 use std::ops::{Add, Mul};
 
 #[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
-pub struct MLE<F: PrimeField> {
+pub struct MLE<F: PrimeField + From<i32>> {
     // Variables are not zero indexed
     pub num_of_vars: usize,
     // The val vector contains the evaluation of the mle over the boolean hypercube
     pub val: Vec<F>,
 }
 
-impl<F: PrimeField> MLE<F> {
+impl<F: PrimeField + From<i32>> MLE<F> {
     pub fn new(val: &Vec<F>) -> Self {
         assert!(
             val.len().is_power_of_two(),
@@ -73,6 +73,94 @@ impl<F: PrimeField> MLE<F> {
         Self::new(&vec![val1, val2])
     }
 
+    pub fn skip_one_and_sum_over_the_boolean_hypercube_with_2(&self) -> UnivariatePolynomial<F> {
+        let val1 = self.val[0..self.val.len() / 2]
+            .iter()
+            .fold(F::zero(), |init, val| init + val);
+        let val2 = self.val[(self.val.len() / 2)..]
+            .iter()
+            .fold(F::zero(), |init, val| init + val);
+        // (1 - t)y0 + ty1 where t = 2 ; 1 - 2 = -1
+        // -1 * val1 = - val1
+        let val3 = (F::from(2) * val2) - val1;
+
+        UnivariatePolynomial::interpolate(
+            &vec![F::from(0), F::from(1), F::from(2)],
+            &vec![val1, val2, val3],
+        )
+    }
+
+    // This function generates the evaluation form of a polynomial
+    // that checks if the values passed in is equal to the value the polynomial was generated with
+    // ie, the MLE evaluates to 1 at g and 0 at other places over the boolean hypercube.
+    pub fn eq(g: &[F]) -> MLE<F> {
+        let num_of_vars = g.len();
+
+        let mut res = vec![F::zero(); 1 << num_of_vars];
+
+        for i in 0..res.len() {
+            let binary_string: Vec<F> = format!("{:0width$b}", i, width = num_of_vars)
+                .chars()
+                .enumerate()
+                .map(|(index, bit)| {
+                    if bit == '0' {
+                        return F::one() - g[index];
+                    } else {
+                        return g[index];
+                    }
+                })
+                .collect();
+
+            res[i] = binary_string
+                .iter()
+                .skip(1)
+                .fold(binary_string[0], |init, check| init * check);
+        }
+
+        MLE::new(&res)
+    }
+
+    pub fn skip_one_and_sum_product_over_the_boolean_hypercube_with_2(
+        &self,
+        rhs: &Self,
+    ) -> UnivariatePolynomial<F> {
+        let lhs_at_0 = self.val[..self.val.len() / 2].iter();
+        let rhs_at_0 = rhs.val[..rhs.val.len() / 2].iter();
+        let res_at_0 = lhs_at_0
+            .clone()
+            .zip(rhs_at_0.clone())
+            .fold(F::zero(), |init, (lhs, rhs)| init + (*lhs * *rhs));
+
+        let lhs_at_1 = self.val[self.val.len() / 2..].iter();
+        let rhs_at_1 = rhs.val[rhs.val.len() / 2..].iter();
+        let res_at_1 = lhs_at_1
+            .clone()
+            .zip(rhs_at_1.clone())
+            .fold(F::zero(), |init, (lhs, rhs)| init + (*lhs * *rhs));
+
+        let lhs_at_2 = lhs_at_0
+            .zip(lhs_at_1)
+            .map(|(lhs, rhs)| (F::one().neg() * lhs) + (F::from(2) * rhs));
+        let rhs_at_2 = rhs_at_0
+            .zip(rhs_at_1)
+            .map(|(lhs, rhs)| (F::one().neg() * lhs) + (F::from(2) * rhs));
+        let res_at_2 = lhs_at_2
+            .zip(rhs_at_2)
+            .fold(F::zero(), |init, (lhs, rhs)| init + (lhs * rhs));
+
+        UnivariatePolynomial::interpolate(
+            &vec![F::from(0), F::from(1), F::from(2)],
+            &vec![res_at_0, res_at_1, res_at_2],
+        )
+    }
+
+    pub fn sum_product_over_the_boolean_hypercube(&self, rhs: &MLE<F>) -> F {
+        self.val
+            .iter()
+            .zip(&rhs.val)
+            .fold(F::zero(), |init, (lhs, rhs)| init + (*lhs * rhs))
+    }
+
     pub fn element_wise_mul(&self, rhs: &Self) -> Self {
         assert_eq!(
             self.val.len(),
@@ -91,7 +179,7 @@ impl<F: PrimeField> MLE<F> {
     }
 }
 
-impl<F: PrimeField> MultilinearPolynomialTrait<F> for MLE<F> {
+impl<F: PrimeField + From<i32>> MultilinearPolynomialTrait<F> for MLE<F> {
     fn partial_eval(&self, points: &Vec<(usize, F)>) -> Self {
         let mut new_poly = self.clone();
         let mut res = vec![];
@@ -190,7 +278,7 @@ impl<F: PrimeField> MultilinearPolynomialTrait<F> for MLE<F> {
     }
 }
 
-impl<F: PrimeField> Add for MLE<F> {
+impl<F: PrimeField + From<i32>> Add for MLE<F> {
     type Output = MLE<F>;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -216,7 +304,7 @@ impl<F: PrimeField> Add for MLE<F> {
 
 // Multiplication takes variabes as different variables
 // Eg: ab * ab = abcd
-impl<F: PrimeField> Mul for MLE<F> {
+impl<F: PrimeField + From<i32>> Mul for MLE<F> {
     type Output = MLE<F>;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -240,6 +328,89 @@ impl<F: PrimeField> Mul for MLE<F> {
         }
 
         Self::new(&res)
+    }
+}
+
+//////////////////////////////////
+/// EVAL FORM SPARSE POLY
+/// //////////////////////////////
+pub mod sparse_mle {
+    use ark_ff::PrimeField;
+
+    use crate::{
+        multilinear_polynomial::traits::MultilinearPolynomialTrait,
+        univariate_polynomial::UnivariatePolynomial,
+    };
+
+    #[derive(Debug)]
+    pub struct SparseMle<F> {
+        pub num_of_variables: usize,
+        pub values: Vec<(usize, F)>,
+    }
+
+    impl<F: PrimeField> SparseMle<F> {
+        pub fn new(num_of_variables: usize, values: Vec<(usize, F)>) -> Self {
+            Self {
+                num_of_variables,
+                values,
+            }
+        }
+    }
+
+    impl<F: PrimeField> MultilinearPolynomialTrait<F> for SparseMle<F> {
+        fn partial_eval(&self, x: &Vec<(usize, F)>) -> Self {
+            todo!()
+        }
+
+        fn evaluate(&self, x: &Vec<(usize, F)>) -> F {
+            todo!()
+        }
+
+        fn number_of_vars(&self) -> usize {
+            self.num_of_variables
+        }
+
+        fn to_bytes(&self) -> Vec<u8> {
+            todo!()
+        }
+
+        fn relabel(&self) -> Self {
+            todo!()
+        }
+
+        fn additive_identity() -> Self {
+            todo!()
+        }
+
+        fn sum_over_the_boolean_hypercube(&self) -> F {
+            self.values
+                .iter()
+                .fold(F::zero(), |init, (_, eval)| init + eval)
+        }
+
+        fn to_univariate(&self) -> Result<UnivariatePolynomial<F>, String> {
+            todo!()
+        }
+    }
+
+    #[cfg(test)]
+    pub mod tests {
+        use ark_bn254::Fq;
+
+        use super::{MultilinearPolynomialTrait, SparseMle};
+
+        #[test]
+        pub fn test_sparse_poly_sum_over_the_boolean_hypercube() {
+            let values = vec![(3, Fq::from(1)), (7, Fq::from(1))];
+
+            let sparse_poly = SparseMle::new(3, values);
+
+            assert_eq!(
+                sparse_poly.sum_over_the_boolean_hypercube(),
+                Fq::from(2),
+                "Incorrect sum over the boolean hypercube"
+            );
+        }
     }
 }
 
@@ -711,4 +882,163 @@ mod tests {
             "Wrong elementwise mul result"
         );
     }
+
+    #[test]
+    pub fn test_skip_one_and_sum_product_over_the_boolean_hypercube_with_2() {
+        let val_1 = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)];
+
+        let val_2 = vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)];
+
+        let poly_1 = MLE::new(&val_1);
+        let poly_2 = MLE::new(&val_2);
+
+        let res_poly = poly_1.skip_one_and_sum_product_over_the_boolean_hypercube_with_2(&poly_2);
+
+        assert_eq!(
+            res_poly.evaluate(Fq::from(0)),
+            Fq::from(0),
+            "Invalid evaluation at 0 of sum of product over the boolean hypercube"
+        );
+        assert_eq!(
+            res_poly.evaluate(Fq::from(1)),
+            Fq::from(6),
+            "Invalid evaluation at 1 of sum of product over the boolean hypercube"
+        );
+        assert_eq!(
+            res_poly.evaluate(Fq::from(2)),
+            Fq::from(24),
+            "Invalid evaluation at 2 sum of product over the boolean hypercube"
+        );
+    }
+
+    #[test]
+    pub fn test_eq_function() {
+        let g = [Fq::from(1), Fq::from(0), Fq::from(1)];
+
+        let eq_poly = MLE::eq(&g);
+
+        dbg!(&eq_poly.num_of_vars);
+
+        let sum = eq_poly.sum_over_the_boolean_hypercube();
+
+        assert_eq!(sum, Fq::from(1), "Incorrect sum over the boolean hypercube");
+
+        assert_eq!(
+            Fq::from(1),
+            eq_poly.evaluate(
+                &g.into_iter()
+                    .enumerate()
+                    .map(|(var, val)| (var + 1, val))
+                    .collect::<Vec<(usize, Fq)>>()
+            ),
+            "Eq poly evaluated at g shoild give 1"
+        );
+    }
+
+    #[test]
+    pub fn test_skip_one_and_sum_over_the_boolean_hypercube_with_2() {
+        let val = vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
+        ];
+
+        let poly = MLE::new(&val);
+
+        let univariate_poly = poly.skip_one_and_sum_over_the_boolean_hypercube_with_2();
+
+        assert_eq!(
+            univariate_poly.evaluate(Fq::from(0)),
+            Fq::from(4),
+            "Wrong univariate polynomial evaluation"
+        );
+        assert_eq!(
+            univariate_poly.evaluate(Fq::from(0)),
+            Fq::from(4),
+            "Wrong univariate polynomial evaluation"
+        );
+        assert_eq!(
+            univariate_poly.evaluate(Fq::from(0)),
+            Fq::from(4),
+            "Wrong univariate polynomial evaluation"
+        );
+    }
+
+    #[test]
+    pub fn test_sum_product_over_the_boolean_hypercube_with_2() {
+        let poly1 = MLE::new(&vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(2)]);
+        let poly2 = MLE::new(&vec![Fq::from(0), Fq::from(0), Fq::from(0), Fq::from(3)]);
+
+        let claimed_sum = poly1.sum_product_over_the_boolean_hypercube(&poly2);
+
+        assert_eq!(
+            claimed_sum,
+            Fq::from(6),
+            "Incorrect sum of product over the boolean hypercube"
+        );
+    }
 }
+
+// type MLE = Vec<u64>;
+
+// enum Polynomial {
+//     PMLE(MLE),
+//     Product([MLE; 2])
+// }
+
+// constraint
+// product polynomials should be uniform (i.e the same number of variables)
+// and each variable should match
+
+// composed evaluate
+// self.mles.fold(|acc, mle| acc *= mle.eval(point), 1)
+
+// partial -> Polynomial
+// self.mles.map(|mle| mle.partial_eval(point)).into()
+
+// what does sumcheck need?
+// n_vars :ok
+// for every var, generate round poly (deg = 2)
+//  3 points => 0_half, 1_half and 2_half
+//. 0_half => partial eval at a = 0
+//. 1_half => partial eval at a = 1
+//. 2_half => partial eval at a = 2
+
+// example
+// 00 00
+// 01 01
+// 10 10
+// 11 11
+
+// 0_half
+// [00, 01] hadamard_prod [00, 01]
+
+// 1_half
+// 10, 11
+
+// 2_half
+// 20, 21
+
+// round_poly = [0_half.sum(), 1_half.sum(), 2_half.sum()]
+
+// let mut round_poly = vec![];
+// for i in 0..(deg+1) {
+//  round_poly.push(poly.get_half(i).sum())
+//}
+
+// fn main() {
+//     dbg!(0 << 1);
+// }
