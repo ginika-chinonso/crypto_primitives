@@ -28,17 +28,60 @@ pub mod test {
 
         let v = vec![val; 4096 * 32].concat();
 
-        dbg!(&v.len());
-
         let init_poly = MLE::new(&v);
 
-        dbg!(&init_poly.num_of_vars);
+        let proof = Prover::prove_sumcheck(init_poly);
 
-        let proof = Prover::prove(init_poly);
-
-        match Verifier::verify(proof) {
+        match Verifier::verify_sumcheck(proof) {
             Ok(val) => assert!(val, "Sumcheck failed"),
             Err(e) => panic!("Error occured: {}", e),
         }
+    }
+
+    #[test]
+    pub fn test_sum_of_product_protocol() {
+        let f_poly = MLE::new(&vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(2),
+            Fq::from(2),
+        ]);
+
+        let g_poly = MLE::new(&vec![
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(3),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(0),
+            Fq::from(3),
+            Fq::from(3),
+        ]);
+
+        let proof = Prover::prove_sum_of_product(&f_poly, &g_poly);
+
+        let verify = Verifier::verify_sumcheck_product(proof);
+
+        assert!(verify.unwrap(), "Invalid sumcheck proof");
     }
 }
