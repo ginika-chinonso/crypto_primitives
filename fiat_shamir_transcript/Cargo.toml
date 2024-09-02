@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ark-ff = "0.4.2"
+ark-ff = "0.4.1"
 sha3 = "0.10.8"
 polynomials = {path = "../polynomials"}
 rand = "0.8.5"

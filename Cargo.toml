@@ -1,4 +1,4 @@
-workspace = { members = [ "blind_auction", "elliptic_curves", "fiat_shamir_transcript", "fields", "gkr", "keccak", "kzg", "merkle_tree", "polynomials", "reed_solomon_fingerprinting", "stark_protocol", "sumcheck", "utils"] }
+workspace = { members = [ "blind_auction", "circom_gkr", "elliptic_curves", "fiat_shamir_transcript", "fields", "gkr", "keccak", "kzg", "merkle_tree", "multilinear_kzg", "polynomials", "reed_solomon_fingerprinting", "stark_protocol", "sumcheck", "utils", "zeromorph"] }
 [package]
 name = "crypto_primitives"
 version = "0.1.0"
@@ -7,8 +7,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ark-ff = "0.4.2"
-ark-poly = "0.4.2"
+ark-ff = "0.4.1"
+ark-poly = "0.4.1"
 polynomials = { version = "0.1.0", path = "polynomials" }
 
 
