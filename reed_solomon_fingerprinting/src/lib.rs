@@ -41,14 +41,8 @@ pub fn generate_codeword<F: PrimeField + FftField>(
 #[cfg(test)]
 mod tests {
     use super::reed_solomon_fingerprinting;
-    use ark_ff::{Fp64, MontBackend, MontConfig};
+    use ark_bn254::Fq;
     use ark_std::UniformRand;
-
-    #[derive(MontConfig)]
-    #[modulus = "17"]
-    #[generator = "3"]
-    pub struct FqConfig;
-    pub type Fq = Fp64<MontBackend<FqConfig, 1>>;
 
     #[test]
     fn test_reed_solomon_same() {
