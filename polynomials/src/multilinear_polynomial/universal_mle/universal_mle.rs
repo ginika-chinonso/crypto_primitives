@@ -44,7 +44,7 @@ impl<F: PrimeField + From<i32>> UniversalMLE<F> {
         }
     }
 
-    pub fn skip_one_and_sum_over_the_boolean_hypercube(&self) -> Vec<F> {
+    pub fn skip_one_and_sum_over_the_boolean_hypercube(&self) -> UnivariatePolynomial<F> {
         let res: Vec<Vec<F>> = match self {
             UniversalMLE::MLES(mles, op) => (0..=(op.degree_checker)(mles))
                 .map(|num| match F::from_str(&num.to_string()) {
@@ -59,7 +59,15 @@ impl<F: PrimeField + From<i32>> UniversalMLE<F> {
                 })
                 .collect(),
         };
-        res.iter().map(|arr| arr.iter().sum()).collect()
+        let y_values = res.iter().map(|arr| arr.iter().sum()).collect();
+        let x_values = (0..=self.degree())
+            .map(|ind| match F::from_str(&ind.to_string()) {
+                Ok(val) => val,
+                Err(_) => panic!("Error converting number to string"),
+            })
+            .collect();
+
+        UnivariatePolynomial::interpolate(&x_values, &y_values)
     }
 
     pub fn degree(&self) -> usize {
@@ -152,8 +160,11 @@ impl<F: PrimeField + From<i32>> MultilinearPolynomialTrait<F> for UniversalMLE<F
 #[cfg(test)]
 pub mod test {
 
-    use crate::multilinear_polynomial::{
-        eval_form::MLE, traits::MultilinearPolynomialTrait, universal_mle::ops::Ops,
+    use crate::{
+        multilinear_polynomial::{
+            eval_form::MLE, traits::MultilinearPolynomialTrait, universal_mle::ops::Ops,
+        },
+        univariate_polynomial::UnivariatePolynomial,
     };
     use ark_bn254::Fq;
 
@@ -503,7 +514,10 @@ pub mod test {
 
         assert_eq!(
             res,
-            vec![Fq::from(26), Fq::from(80), Fq::from(174)],
+            UnivariatePolynomial::interpolate(
+                &vec![Fq::from(0), Fq::from(1), Fq::from(2)],
+                &vec![Fq::from(26), Fq::from(80), Fq::from(174)]
+            ),
             "Invalid sum over the boolean hypercube"
         );
     }
