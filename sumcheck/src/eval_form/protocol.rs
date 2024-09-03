@@ -30,9 +30,9 @@ pub mod test {
 
         let init_poly = MLE::new(&v);
 
-        let proof = Prover::prove_sumcheck(init_poly);
+        let proof = Prover::prove_sumcheck(init_poly.clone());
 
-        match Verifier::verify_sumcheck(proof) {
+        match Verifier::verify_sumcheck(init_poly, proof) {
             Ok(val) => assert!(val, "Sumcheck failed"),
             Err(e) => panic!("Error occured: {}", e),
         }
@@ -80,7 +80,7 @@ pub mod test {
 
         let proof = Prover::prove_sum_of_product(&f_poly, &g_poly);
 
-        let verify = Verifier::verify_sumcheck_product(proof);
+        let verify = Verifier::verify_sumcheck_product(vec![f_poly, g_poly], proof);
 
         assert!(verify.unwrap(), "Invalid sumcheck proof");
     }

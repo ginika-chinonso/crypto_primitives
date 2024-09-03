@@ -7,61 +7,25 @@ use polynomials::{
     univariate_polynomial::UnivariatePolynomial,
 };
 
-#[derive(Debug)]
-pub struct SumcheckProof<F: PrimeField + From<i32>> {
-    pub init_poly: Vec<MLE<F>>,
-    pub round_polys: Vec<MLE<F>>,
-    pub claimed_sum: F,
-}
-
-#[derive(Debug)]
-pub struct SumcheckProductProof<F: PrimeField + From<i32>> {
-    pub init_poly: Vec<MLE<F>>,
-    pub round_polys: Vec<UnivariatePolynomial<F>>,
-    pub claimed_sum: F,
-}
-
-impl<F: PrimeField + From<i32>> SumcheckProof<F> {
-    pub fn new(init_poly: Vec<MLE<F>>, round_polys: Vec<MLE<F>>, claimed_sum: F) -> Self {
-        Self {
-            init_poly,
-            round_polys,
-            claimed_sum,
-        }
-    }
-}
-
-impl<F: PrimeField + From<i32>> SumcheckProductProof<F> {
-    pub fn new(
-        init_poly: Vec<MLE<F>>,
-        round_polys: Vec<UnivariatePolynomial<F>>,
-        claimed_sum: F,
-    ) -> Self {
-        Self {
-            init_poly,
-            round_polys,
-            claimed_sum,
-        }
-    }
-}
+use crate::universal_mle::universal_mle::SumcheckProof;
 
 pub struct Prover<F: PrimeField> {
     pub _marker: PhantomData<F>,
 }
 
-impl<F: PrimeField + From<i32>> Prover<F> {
+impl<F: PrimeField> Prover<F> {
     pub fn prove_sumcheck(init_poly: MLE<F>) -> SumcheckProof<F> {
         let claimed_sum = init_poly.sum_over_the_boolean_hypercube();
 
         let mut transcript = Transcript::new();
         transcript.append(&init_poly.to_bytes());
 
-        let mut round_polys: Vec<MLE<F>> = vec![];
+        let mut round_polys: Vec<UnivariatePolynomial<F>> = vec![];
 
         let mut initial_poly = init_poly.clone();
 
         for _ in 0..init_poly.num_of_vars {
-            let round_poly = initial_poly.skip_one_and_sum_over_the_boolean_hypercube();
+            let round_poly = initial_poly.skip_one_and_sum_over_the_boolean_hypercube(2);
 
             let challenge = transcript.sample_field_element();
 
@@ -72,10 +36,10 @@ impl<F: PrimeField + From<i32>> Prover<F> {
             round_polys.push(round_poly);
         }
 
-        SumcheckProof::new(vec![init_poly], round_polys, claimed_sum)
+        SumcheckProof::new(round_polys, claimed_sum)
     }
 
-    pub fn prove_sum_of_product(f_poly: &MLE<F>, g_poly: &MLE<F>) -> SumcheckProductProof<F> {
+    pub fn prove_sum_of_product(f_poly: &MLE<F>, g_poly: &MLE<F>) -> SumcheckProof<F> {
         let mut transcript = Transcript::new();
         transcript.append(&f_poly.to_bytes());
         transcript.append(&g_poly.to_bytes());
@@ -88,35 +52,26 @@ impl<F: PrimeField + From<i32>> Prover<F> {
             "Both f and g polynomials should have the same length"
         );
 
-        let claimed_sum = f_poly.sum_product_over_the_boolean_hypercube(g_poly);
+        let claimed_sum = f_poly.sum_product_over_the_boolean_hypercube(&vec![g_poly.clone()]);
 
         let mut f = f_poly.clone();
         let mut g = g_poly.clone();
 
-        for i in 0..f_poly.num_of_vars {
-            let round_poly = f.skip_one_and_sum_product_over_the_boolean_hypercube_with_2(&g);
+        for _ in 0..f_poly.num_of_vars {
+            let round_poly =
+                f.skip_one_and_sum_product_over_the_boolean_hypercube(&vec![g.clone()]);
 
             let challenge = transcript.sample_field_element();
 
             transcript.append(&round_poly.to_bytes());
 
-            dbg!(&round_poly);
             round_polys.push(round_poly);
 
-            dbg!("i: {}, challenge: {}", i, challenge);
-
             f = f.partial_eval(&vec![(1, challenge)]);
-            dbg!(&f);
             g = g.partial_eval(&vec![(1, challenge)]);
-            dbg!(&g);
         }
 
-        // TODO: Remove this clone
-        SumcheckProductProof::new(
-            vec![f_poly.clone(), g_poly.clone()],
-            round_polys,
-            claimed_sum,
-        )
+        SumcheckProof::new(round_polys, claimed_sum)
     }
 }
 
@@ -162,7 +117,7 @@ pub mod test {
         );
 
         assert!(
-            proof.round_polys[0].val == vec![Fq::from(4), Fq::from(4),],
+            proof.round_polys[0].coefficients == vec![Fq::from(4)],
             "Incorrect round 1 poly"
         );
     }
@@ -197,7 +152,7 @@ pub mod test {
 
         let proof = Prover::prove_sum_of_product(&f_poly, &g_poly);
 
-        let verify = Verifier::verify_sumcheck_product(proof);
+        let verify = Verifier::verify_sumcheck_product(vec![f_poly, g_poly], proof);
 
         assert!(verify.unwrap(), "Invalid sumcheck proof");
     }
