@@ -3,7 +3,7 @@ use ark_serialize::*;
 use std::{
     collections::HashMap,
     fmt::Display,
-    ops::{Add, Div, Mul},
+    ops::{Add, Div, Mul, Sub},
 };
 
 // Univariate Polynomial
@@ -142,6 +142,33 @@ impl<F: PrimeField> Add for UnivariatePolynomial<F> {
 
         for i in 0..shorter.len() {
             longer[i] += shorter[i];
+        }
+
+        Self::new(longer)
+    }
+}
+
+// Implement native subtraction for univariate polynomial
+impl<F: PrimeField> Sub for UnivariatePolynomial<F> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        if self.is_zero() {
+            return rhs.clone();
+        }
+
+        if rhs.is_zero() {
+            return self.clone();
+        }
+
+        let (mut longer, shorter) = if self.coefficients.len() >= rhs.coefficients.len() {
+            (self.coefficients.clone(), &rhs.coefficients)
+        } else {
+            (rhs.coefficients.clone(), &self.coefficients)
+        };
+
+        for i in 0..shorter.len() {
+            longer[i] -= shorter[i];
         }
 
         Self::new(longer)
