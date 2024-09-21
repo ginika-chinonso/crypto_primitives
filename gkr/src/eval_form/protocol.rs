@@ -1,6 +1,6 @@
 use std::{error::Error, marker::PhantomData};
 
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger, PrimeField};
 use fiat_shamir_transcript::Transcript;
 use polynomials::multilinear_polynomial::traits::MultilinearPolynomialTrait;
 use sumcheck::universal_mle::universal_mle::{Sumcheck, SumcheckProof};
@@ -52,6 +52,9 @@ impl<F: PrimeField> GKR<F> {
 
         let mut transcript = Transcript::new();
 
+        transcript.append(&circuit_evaluation[0][0].into_bigint().to_bytes_be());
+        transcript.append(&get_wmle(inputs).to_bytes());
+
         let r: Vec<F> =
             transcript.sample_n_field_elements(circuit.layers[0].layer_output_num_of_vars());
 
@@ -65,6 +68,8 @@ impl<F: PrimeField> GKR<F> {
 
         let layer_sumcheck_proof = Sumcheck::prove(layer_poly.poly);
 
+        transcript.append(&layer_sumcheck_proof.0.to_bytes());
+
         rounds_sumcheck_proof.push(layer_sumcheck_proof.0);
 
         let (r_b0, r_c0) = layer_sumcheck_proof
@@ -74,23 +79,26 @@ impl<F: PrimeField> GKR<F> {
         let mut r_b = r_b0.to_vec();
         let mut r_c = r_c0.to_vec();
 
-        wbs.push(
-            layer_w_mle.evaluate(
-                &r_b.iter()
-                    .enumerate()
-                    .map(|(ind, val)| (ind + 1, *val))
-                    .collect(),
-            ),
+        let mut wb = layer_w_mle.evaluate(
+            &r_b.iter()
+                .enumerate()
+                .map(|(ind, val)| (ind + 1, *val))
+                .collect(),
         );
 
-        wcs.push(
-            layer_w_mle.evaluate(
-                &r_c.iter()
-                    .enumerate()
-                    .map(|(ind, val)| (ind + 1, *val))
-                    .collect(),
-            ),
+        let mut wc = layer_w_mle.evaluate(
+            &r_c.iter()
+                .enumerate()
+                .map(|(ind, val)| (ind + 1, *val))
+                .collect(),
         );
+
+        transcript.append(&wb.into_bigint().to_bytes_be());
+        transcript.append(&wc.into_bigint().to_bytes_be());
+
+        wbs.push(wb);
+
+        wcs.push(wc);
 
         for i in 1..circuit.depth {
             let layer_i_ops_mle = circuit.get_layer_ops_mles(i);
@@ -105,6 +113,8 @@ impl<F: PrimeField> GKR<F> {
 
             let layer_sumcheck_proof = Sumcheck::prove(new_layer_poly.poly);
 
+            transcript.append(&layer_sumcheck_proof.0.to_bytes());
+
             rounds_sumcheck_proof.push(layer_sumcheck_proof.0);
 
             let (r_b0, r_c0) = layer_sumcheck_proof
@@ -115,23 +125,25 @@ impl<F: PrimeField> GKR<F> {
 
             r_c = r_c0.to_vec();
 
-            wbs.push(
-                layer_i_plus_1_w_mle.evaluate(
-                    &r_b.iter()
-                        .enumerate()
-                        .map(|(ind, val)| (ind + 1, *val))
-                        .collect(),
-                ),
+            wb = layer_i_plus_1_w_mle.evaluate(
+                &r_b.iter()
+                    .enumerate()
+                    .map(|(ind, val)| (ind + 1, *val))
+                    .collect(),
             );
 
-            wcs.push(
-                layer_i_plus_1_w_mle.evaluate(
-                    &r_c.iter()
-                        .enumerate()
-                        .map(|(ind, val)| (ind + 1, *val))
-                        .collect(),
-                ),
+            wc = layer_i_plus_1_w_mle.evaluate(
+                &r_c.iter()
+                    .enumerate()
+                    .map(|(ind, val)| (ind + 1, *val))
+                    .collect(),
             );
+
+            transcript.append(&wb.into_bigint().to_bytes_be());
+            transcript.append(&wc.into_bigint().to_bytes_be());
+
+            wbs.push(wb);
+            wcs.push(wc);
         }
 
         GKRProof::new(claimed_sum.clone(), rounds_sumcheck_proof, wbs, wcs)
@@ -143,6 +155,9 @@ impl<F: PrimeField> GKR<F> {
         proof: &GKRProof<F>,
     ) -> Result<bool, Box<dyn Error>> {
         let mut transcript = Transcript::new();
+
+        transcript.append(&proof.output[0].into_bigint().to_bytes_be());
+        transcript.append(&get_wmle(inputs).to_bytes());
 
         let mut r: Vec<F> =
             transcript.sample_n_field_elements(circuit.layers[0].layer_output_num_of_vars());
@@ -186,6 +201,10 @@ impl<F: PrimeField> GKR<F> {
 
         assert_eq!(f_b_c_eval, round_sum, "Round sum does not match");
 
+        transcript.append(&proof.sumcheck_proofs[0].to_bytes());
+        transcript.append(&proof.wbs[0].into_bigint().to_bytes_be());
+        transcript.append(&proof.wcs[0].into_bigint().to_bytes_be());
+
         let mut alpha_n_beta: Vec<F> = transcript.sample_n_field_elements(2);
 
         claimed_sum = alpha_n_beta[0] * &proof.wbs[0] + alpha_n_beta[1] * proof.wcs[0];
@@ -216,6 +235,10 @@ impl<F: PrimeField> GKR<F> {
             r_b = r_b0.to_vec();
 
             r_c = r_c0.to_vec();
+
+            transcript.append(&proof.sumcheck_proofs[i].to_bytes());
+            transcript.append(&proof.wbs[i].into_bigint().to_bytes_be());
+            transcript.append(&proof.wcs[i].into_bigint().to_bytes_be());
 
             let f_b_c_eval = evaluate_layer_mle_given_inputs(
                 &new_layer_ops_mle,
@@ -333,7 +356,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn test_proving() {
+    pub fn test_eval_form_gkr() {
         let circuit = create_circuit();
 
         let inputs = vec![
