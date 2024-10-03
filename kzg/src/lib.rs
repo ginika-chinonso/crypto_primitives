@@ -7,11 +7,15 @@ mod trusted_setup;
 use trusted_setup::TrustedSetUpCeremony;
 
 pub struct KZG<C: Pairing, H: HashToField<C::ScalarField>> {
-    trusted_setup: TrustedSetUpCeremony<C, H>,
+    pub trusted_setup: TrustedSetUpCeremony<C, H>,
 }
 
 impl<C: Pairing, H: HashToField<C::ScalarField>> KZG<C, H> {
-    fn instantiate(hasher_domain: &[u8], domain_size: usize, initial_randomness: &[u8]) -> Self {
+    pub fn instantiate(
+        hasher_domain: &[u8],
+        domain_size: usize,
+        initial_randomness: &[u8],
+    ) -> Self {
         let trusted_setup_ceremony = TrustedSetUpCeremony::instantiate(
             hasher_domain,
             domain_size as u64,
@@ -23,11 +27,11 @@ impl<C: Pairing, H: HashToField<C::ScalarField>> KZG<C, H> {
         }
     }
 
-    fn contribute(&mut self, randomness: &[u8]) {
+    pub fn contribute(&mut self, randomness: &[u8]) {
         self.trusted_setup.contribute(randomness);
     }
 
-    fn commit_to_poly(&self, poly: &UnivariatePolynomial<C::ScalarField>) -> C::G1 {
+    pub fn commit_to_poly(&self, poly: &UnivariatePolynomial<C::ScalarField>) -> C::G1 {
         assert!(
             self.trusted_setup.public_parameters.g1_powers_of_tau.len() >= poly.coefficients.len(),
             "Powers of tau not sufficient to evaluate poly"
@@ -48,7 +52,7 @@ impl<C: Pairing, H: HashToField<C::ScalarField>> KZG<C, H> {
 
     // Opens a polynomial (poly) at a point (eval_point) using the commitment to the polynomial
     // returns a tuple of the evaluation and proof
-    fn open(
+    pub fn open(
         &self,
         eval_point: C::ScalarField,
         poly: UnivariatePolynomial<C::ScalarField>,
@@ -76,7 +80,7 @@ impl<C: Pairing, H: HashToField<C::ScalarField>> KZG<C, H> {
         (res, proof)
     }
 
-    fn verify(
+    pub fn verify(
         &self,
         eval_point: C::ScalarField,
         eval: C::ScalarField,
