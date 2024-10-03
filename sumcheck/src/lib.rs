@@ -1,4 +1,3 @@
-pub mod interactive_sumcheck;
-pub mod non_interactive_sumcheck;
-pub mod prover;
-pub mod verifier;
+pub mod coeff_form;
+pub mod eval_form;
+pub mod universal_mle;

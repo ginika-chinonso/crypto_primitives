@@ -3,7 +3,7 @@ use ark_serialize::*;
 use std::{
     collections::HashMap,
     fmt::Display,
-    ops::{Add, Div, Mul},
+    ops::{Add, Div, Mul, Sub},
 };
 
 // Univariate Polynomial
@@ -48,15 +48,6 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
                     cache.insert((i, j), r.clone());
                     Self::new(vec![r])
                 };
-                // without caching
-                // match (x_values[i] - x_values[j]).inverse() {
-                //     Option::Some(val) => {
-                //         denom = Polynomial::new(vec![val]);
-                //     }
-                //     Option::None => {
-                //         panic!("Invalid inverse");
-                //     }
-                // }
                 y_poly = y_poly * num * denom;
             }
             res_poly = res_poly + y_poly;
@@ -90,7 +81,7 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
 
     pub fn additive_identity() -> Self {
         Self {
-            coefficients: vec![F::zero()],
+            coefficients: vec![],
         }
     }
 
@@ -101,11 +92,10 @@ impl<F: PrimeField> UnivariatePolynomial<F> {
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
-        let mut res = Vec::new();
-        for coefficient in self.coefficients.to_vec() {
-            res.extend(coefficient.into_bigint().to_bytes_be())
-        }
-        res
+        self.coefficients.iter().fold(vec![], |mut init, coeff| {
+            init.extend(coeff.into_bigint().to_bytes_be());
+            init
+        })
     }
 }
 
@@ -120,22 +110,11 @@ impl<F: PrimeField> Mul for UnivariatePolynomial<F> {
 
         let mut res_array = vec![F::zero(); self.coefficients.len() + rhs.coefficients.len() - 1];
 
-        let mut i = 0;
-
-        loop {
-            if i >= self.coefficients.len() {
-                break;
-            }
-            let mut j = 0;
-            loop {
-                if j >= rhs.coefficients.len() {
-                    break;
-                };
+        for i in 0..self.coefficients.len() {
+            for j in 0..rhs.coefficients.len() {
                 let val = self.coefficients[i] * rhs.coefficients[j];
                 res_array[i + j] += val;
-                j += 1;
             }
-            i += 1;
         }
 
         UnivariatePolynomial::new(res_array)
@@ -163,6 +142,33 @@ impl<F: PrimeField> Add for UnivariatePolynomial<F> {
 
         for i in 0..shorter.len() {
             longer[i] += shorter[i];
+        }
+
+        Self::new(longer)
+    }
+}
+
+// Implement native subtraction for univariate polynomial
+impl<F: PrimeField> Sub for UnivariatePolynomial<F> {
+    type Output = Self;
+
+    fn sub(self, rhs: Self) -> Self {
+        if self.is_zero() {
+            return rhs.clone();
+        }
+
+        if rhs.is_zero() {
+            return self.clone();
+        }
+
+        let (mut longer, shorter) = if self.coefficients.len() >= rhs.coefficients.len() {
+            (self.coefficients.clone(), &rhs.coefficients)
+        } else {
+            (rhs.coefficients.clone(), &self.coefficients)
+        };
+
+        for i in 0..shorter.len() {
+            longer[i] -= shorter[i];
         }
 
         Self::new(longer)
