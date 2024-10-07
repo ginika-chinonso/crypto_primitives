@@ -25,7 +25,7 @@ let commitment = kzg.commit_to_poly(&poly);
 
 - Open a polynomial
 ```rust
-let (evaluation, proof) = kzg.open(Fr::from(5000), poly, zeroifier);
+let (evaluation, proof) = kzg.open(Fr::from(5000), poly);
 ```
 
 - Verify proof
@@ -49,9 +49,7 @@ kzg.contribute("Second contribution".as_bytes());
 
 let commitment = kzg.commit_to_poly(&poly);
 
-let zeroifier = UnivariatePolynomial::new(vec![-Fr::from(5000), Fr::from(1)]);
-
-let (evaluation, proof) = kzg.open(Fr::from(5000), poly, zeroifier);
+let (evaluation, proof) = kzg.open(Fr::from(5000), poly);
 
 assert!(
     kzg.verify(Fr::from(5000), evaluation, commitment, proof),
