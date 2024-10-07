@@ -1,5 +1,5 @@
 use ark_ec::{pairing::Pairing, Group};
-use ark_ff::{field_hashers::HashToField, PrimeField};
+use ark_ff::{field_hashers::HashToField, One, PrimeField};
 
 use polynomials::univariate_polynomial::UnivariatePolynomial;
 
@@ -56,7 +56,6 @@ impl<C: Pairing, H: HashToField<C::ScalarField>> KZG<C, H> {
         &self,
         eval_point: C::ScalarField,
         poly: UnivariatePolynomial<C::ScalarField>,
-        zeroifier: UnivariatePolynomial<C::ScalarField>,
     ) -> (C::ScalarField, C::G1) {
         assert!(
             self.trusted_setup.public_parameters.g1_powers_of_tau.len() >= poly.coefficients.len(),
@@ -65,7 +64,8 @@ impl<C: Pairing, H: HashToField<C::ScalarField>> KZG<C, H> {
 
         let res = poly.evaluate(eval_point);
 
-        let (quotient, _) = poly / zeroifier;
+        let (quotient, _) =
+            poly / UnivariatePolynomial::new(vec![-eval_point, C::ScalarField::one()]);
 
         let proof: C::G1 = quotient.coefficients.iter().enumerate().fold(
             C::G1::default(),
@@ -154,9 +154,7 @@ pub mod test {
 
         let commitment = kzg.commit_to_poly(&poly);
 
-        let zeroifier = UnivariatePolynomial::new(vec![-Fr::from(5000), Fr::from(1)]);
-
-        let (evaluation, proof) = kzg.open(Fr::from(5000), poly, zeroifier);
+        let (evaluation, proof) = kzg.open(Fr::from(5000), poly);
 
         assert!(
             kzg.verify(Fr::from(5000), evaluation, commitment, proof),
