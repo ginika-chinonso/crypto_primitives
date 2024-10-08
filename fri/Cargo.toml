@@ -1,0 +1,16 @@
+[package]
+name = "stark_protocol"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+ark-bn254 = "0.4.0"
+ark-ff = "0.4.1"
+ark-std = "0.4.0"
+fiat_shamir_transcript = { version = "0.1.0", path = "../fiat_shamir_transcript" }
+itertools = "0.12.1"
+keccak-rust = "1.0.2"
+merkle_tree = { version = "0.1.0", path = "../merkle_tree" }
+polynomials = { version = "0.1.0", path = "../polynomials" }
