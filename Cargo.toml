@@ -1,4 +1,4 @@
-workspace = { members = [ "blind_auction", "fiat_shamir_transcript", "gkr", "kzg", "merkle_tree", "multilinear_kzg", "polynomials", "reed_solomon_fingerprinting", "stark_protocol", "sumcheck", "utils"] }
+workspace = { members = [ "blind_auction", "fiat_shamir_transcript", "fri", "gkr", "kzg", "merkle_tree", "multilinear_kzg", "polynomials", "reed_solomon_fingerprinting", "sumcheck"] }
 [package]
 name = "crypto_primitives"
 version = "0.1.0"
