@@ -49,3 +49,6 @@ This repo will continually be updated with more protocol implementations and opt
 ## Multilinear KZG
 - Protocol - [link](./multilinear_kzg/src/lib.rs)
 - Trusted set-up - [link](./multilinear_kzg/src/trusted_setup.rs)
+
+## FRI
+- Protocol - [link](./fri/src/fri.rs)
